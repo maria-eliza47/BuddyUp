@@ -29,4 +29,14 @@ urlpatterns = [
         'users/',
         include('users.urls')
     ),
+
+    path(
+        'swipes/',
+        include('swipes.urls')
+    ),
+
+    path(
+        'matches/',
+        include('matches.urls')
+    ),
 ]
