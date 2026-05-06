@@ -57,43 +57,45 @@ def inregistreaza_swipe(request, swiped_user_id, tip_actiune):
 # ==========================================
 
 def get_utilizatori_filtrati(request):
-    """
-    Returneaza utilizatorii din apropiere, excluzand pe cei deja vazuti.
-    """
-    # Parametrii de filtrare (raza implicita 10km)
+    # Parametri primiți din URL (ex: ?raza=10&varsta_min=18&varsta_max=25)
     raza_maxima = float(request.GET.get('raza', 10))
+    v_min = int(request.GET.get('varsta_min', 18))
+    v_max = int(request.GET.get('varsta_max', 99))
 
-    # Presupunem ca datele GPS sunt in modelul Profile
-    user_profil = request.user.profile
-    my_coords = (user_profil.latitude, user_profil.longitude)
+    me = request.user.profile
+    my_interests = set(me.interests.split(',')) if me.interests else set()
 
-    # 1. Gasim ID-urile utilizatorilor carora le-ai dat deja swipe
     id_uri_swiped = Swipe.objects.filter(swiper=request.user).values_list('swiped_user_id', flat=True)
-
-    # 2. Luam potentialii prieteni (excluzandu-te pe tine si pe cei deja swiped)
     potentiali = User.objects.exclude(id=request.user.id).exclude(id__in=id_uri_swiped)
 
     rezultat_final = []
 
     for p in potentiali:
-        try:
-            # Coordonatele potentialului prieten
-            p_coords = (p.profile.latitude, p.profile.longitude)
+        profil_p = p.profile
 
-            # CALCUL GPS: Folosim libraria geopy
-            distanta = geodesic(my_coords, p_coords).km
-
-            # FILTRARE: Doar daca este in raza de km setata
-            if distanta <= raza_maxima:
-                rezultat_final.append({
-                    'id': p.id,
-                    'username': p.username,
-                    'distanta_km': round(distanta, 1),
-                    'bio': p.profile.bio,
-                    'interese': p.profile.interests
-                })
-        except AttributeError:
-            # Sarim peste utilizatorii care nu au profilul completat (lat/lon lipsa)
+        # 1. FILTRU VÂRSTĂ
+        if not (v_min <= profil_p.age <= v_max):
             continue
+
+        # 2. FILTRU GPS
+        distanta = geodesic((me.latitude, me.longitude), (profil_p.latitude, profil_p.longitude)).km
+        if distanta > raza_maxima:
+            continue
+
+        # 3. CALCUL INTERESE COMUNE
+        p_interests = set(profil_p.interests.split(',')) if profil_p.interests else set()
+        comune = my_interests.intersection(p_interests)
+
+        # Adăugăm în listă doar dacă au măcar un interes comun (opțional, depinde de cât de strict vrei să fii)
+        rezultat_final.append({
+            'id': p.id,
+            'username': p.username,
+            'distanta_km': round(distanta, 1),
+            'interese_comune': list(comune),
+            'scor_match': len(comune) # Cu cât mai multe interese, cu atât mai sus în listă
+        })
+
+    # Sortăm lista după numărul de interese comune (cei mai compatibili primii)
+    rezultat_final = sorted(rezultat_final, key=lambda x: x['scor_match'], reverse=True)
 
     return JsonResponse({'users': rezultat_final})

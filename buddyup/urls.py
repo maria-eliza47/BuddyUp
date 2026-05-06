@@ -21,4 +21,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     # Aceasta linie leaga rutele tale de Swipe:
     path('swipes/', include('swipes.urls')),
+    path('matches/', include('matches.urls')),
 ]
