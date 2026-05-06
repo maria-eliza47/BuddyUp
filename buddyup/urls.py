@@ -17,9 +17,26 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    # Aceasta linie leaga rutele tale de Swipe:
-    path('swipes/', include('swipes.urls')),
-    path('matches/', include('matches.urls')),
+
+    path(
+        'admin/',
+        admin.site.urls
+    ),
+
+    path(
+        'users/',
+        include('users.urls')
+    ),
+
+    path(
+        'swipes/',
+        include('swipes.urls')
+    ),
+
+    path(
+        'matches/',
+        include('matches.urls')
+    ),
 ]
