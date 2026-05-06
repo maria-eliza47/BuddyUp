@@ -4,11 +4,24 @@ from django.shortcuts import get_object_or_404
 from .models import Swipe
 from matches.models import Match
 from geopy.distance import geodesic
+import json
+from django.views.decorators.csrf import csrf_exempt
+from profiles.models import Profile
+import unicodedata
 
 # ==========================================
 # 1. LOGICA DE SWIPE SI MATCH
 # ==========================================
-
+def normalizeaza_text(text):
+    if not text:
+        return ""
+    # 1. Litere mici
+    text = text.lower()
+    # 2. Scoatem diacriticele (ă->a, î->i, etc.)
+    text = ''.join(c for c in unicodedata.normalize('NFD', text)
+                   if unicodedata.category(c) != 'Mn')
+    # 3. Scoatem spațiile de la margini
+    return text.strip()
 def inregistreaza_swipe(request, swiped_user_id, tip_actiune):
     """
     Inregistreaza un swipe (LIKE/PASS) si verifica reciprocitatea pentru Match.
@@ -57,13 +70,21 @@ def inregistreaza_swipe(request, swiped_user_id, tip_actiune):
 # ==========================================
 
 def get_utilizatori_filtrati(request):
+    try:
+        me = request.user.profile
+        if me.latitude is None or me.longitude is None:
+            return JsonResponse({'error': 'Locația ta nu este setată'}, status=400)
+    except Profile.DoesNotExist:
+        return JsonResponse({'error': 'Profil inexistent'}, status=404)
     # Parametri primiți din URL (ex: ?raza=10&varsta_min=18&varsta_max=25)
     raza_maxima = float(request.GET.get('raza', 10))
     v_min = int(request.GET.get('varsta_min', 18))
     v_max = int(request.GET.get('varsta_max', 99))
 
-    me = request.user.profile
-    my_interests = set(me.interests.split(',')) if me.interests else set()
+    if me.interests:
+        my_interests = {normalizeaza_text(i) for i in me.interests.split(',') if i.strip()}
+    else:
+        my_interests = set()
 
     id_uri_swiped = Swipe.objects.filter(swiper=request.user).values_list('swiped_user_id', flat=True)
     potentiali = User.objects.exclude(id=request.user.id).exclude(id__in=id_uri_swiped)
@@ -71,8 +92,14 @@ def get_utilizatori_filtrati(request):
     rezultat_final = []
 
     for p in potentiali:
-        profil_p = p.profile
+        try:
+            profil_p = p.profile
+            if profil_p.age is None:
+                continue
+        except Profile.DoesNotExist:
+            continue
 
+        # Acestea trebuie să fie aliniate cu try-ul (nu în interiorul lui!)
         # 1. FILTRU VÂRSTĂ
         if not (v_min <= profil_p.age <= v_max):
             continue
@@ -82,20 +109,39 @@ def get_utilizatori_filtrati(request):
         if distanta > raza_maxima:
             continue
 
-        # 3. CALCUL INTERESE COMUNE
-        p_interests = set(profil_p.interests.split(',')) if profil_p.interests else set()
+
+        if profil_p.interests:
+            p_interests = {normalizeaza_text(i) for i in profil_p.interests.split(',') if i.strip()}
+        else:
+            p_interests = set()
+
         comune = my_interests.intersection(p_interests)
 
-        # Adăugăm în listă doar dacă au măcar un interes comun (opțional, depinde de cât de strict vrei să fii)
         rezultat_final.append({
             'id': p.id,
             'username': p.username,
             'distanta_km': round(distanta, 1),
             'interese_comune': list(comune),
-            'scor_match': len(comune) # Cu cât mai multe interese, cu atât mai sus în listă
+            'scor_match': len(comune)
         })
 
     # Sortăm lista după numărul de interese comune (cei mai compatibili primii)
     rezultat_final = sorted(rezultat_final, key=lambda x: x['scor_match'], reverse=True)
 
     return JsonResponse({'users': rezultat_final})
+
+@csrf_exempt # Important pentru cererile de pe mobil
+def actualizeaza_locatia(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            user_profile = request.user.profile
+
+            user_profile.latitude = data.get('latitude')
+            user_profile.longitude = data.get('longitude')
+            user_profile.save()
+
+            return JsonResponse({'status': 'success', 'message': 'Locație salvată!'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'Doar POST permis'}, status=405)
