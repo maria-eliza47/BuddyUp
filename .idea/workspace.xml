@@ -18,6 +18,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="80a0f8da-2105-4439-8270-a020d4c50180" name="Changes" comment=".">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/swipes/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/swipes/views.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -89,7 +90,7 @@
       <option name="presentableId" value="Default" />
       <updated>1778087191498</updated>
       <workItem from="1778087192785" duration="2638000" />
-      <workItem from="1778094168398" duration="2055000" />
+      <workItem from="1778094168398" duration="3613000" />
     </task>
     <task id="LOCAL-00001" summary=".">
       <option name="closed" value="true" />

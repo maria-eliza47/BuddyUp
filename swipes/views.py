@@ -1,51 +1,99 @@
 from django.http import JsonResponse
+from django.contrib.auth.models import User
+from django.shortcuts import get_object_or_404
 from .models import Swipe
 from matches.models import Match
-from django.contrib.auth.models import User
+from geopy.distance import geodesic
+
+# ==========================================
+# 1. LOGICA DE SWIPE SI MATCH
+# ==========================================
 
 def inregistreaza_swipe(request, swiped_user_id, tip_actiune):
-    # 1. Salvează swipe-ul curent în baza de date
-    swipe = Swipe.objects.create(
+    """
+    Inregistreaza un swipe (LIKE/PASS) si verifica reciprocitatea pentru Match.
+    """
+    swiped_user = get_object_or_404(User, id=swiped_user_id)
+
+    # SIGURANTA: Nu poti sa-ti dai swipe singur
+    if request.user.id == swiped_user.id:
+        return JsonResponse({'error': 'Nu iti poti da swipe singur'}, status=400)
+
+    # SIGURANTA: Verificam daca ai mai dat deja swipe acestui utilizator (anti-duplicat)
+    deja_vazut = Swipe.objects.filter(swiper=request.user, swiped_user=swiped_user).exists()
+    if deja_vazut:
+        return JsonResponse({'error': 'Ai dat deja swipe acestui utilizator'}, status=400)
+
+    # SALVARE: Inregistram actiunea in baza de date
+    Swipe.objects.create(
         swiper=request.user,
-        swiped_user_id=swiped_user_id,
+        swiped_user=swiped_user,
         swipe_type=tip_actiune
     )
 
-    match_gasit = False
+    este_match = False
+
     if tip_actiune == 'RIGHT':
-        # 2. Algoritmul de Match: Căutăm dacă și celălalt a dat LIKE
+        # ALGORITM MATCH: Verificam daca si celalalt utilizator ti-a dat RIGHT anterior
         reciproc = Swipe.objects.filter(
-            swiper_id=swiped_user_id,
+            swiper=swiped_user,
             swiped_user=request.user,
             swipe_type='RIGHT'
         ).exists()
 
         if reciproc:
-            # 3. Creăm Match-ul oficial
-            Match.objects.create(user1=request.user, user2_id=swiped_user_id)
-            match_gasit = True
+            # Cream Match-ul oficial (get_or_create previne erorile de duplicare la nivel de DB)
+            Match.objects.get_or_create(user1=request.user, user2=swiped_user)
+            este_match = True
 
-    return JsonResponse({'status': 'success', 'match': match_gasit})
-from geopy.distance import geodesic
+    return JsonResponse({
+        'status': 'success',
+        'is_match': este_match,
+        'message': 'Actiune inregistrata'
+    })
 
-def filtreaza_utilizatori_apropiati(request, raza_km=10):
-    # 1. Luăm profilul utilizatorului logat (presupunem că are lat/lon)
-    # În mod normal, Laura se ocupă de Profiles, dar tu ai nevoie de ele aici
-    me = request.user.profile
-    my_coords = (me.latitude, me.longitude)
+# ==========================================
+# 2. FILTRE SI GPS DISTANCE
+# ==========================================
 
-    # 2. Luăm toți ceilalți utilizatori
-    toti_ceilalți = User.objects.exclude(id=request.user.id)
-    utilizatori_in_raza = []
+def get_utilizatori_filtrati(request):
+    """
+    Returneaza utilizatorii din apropiere, excluzand pe cei deja vazuti.
+    """
+    # Parametrii de filtrare (raza implicita 10km)
+    raza_maxima = float(request.GET.get('raza', 10))
 
-    for user in toti_ceilalți:
-        friend_coords = (user.profile.latitude, user.profile.longitude)
+    # Presupunem ca datele GPS sunt in modelul Profile
+    user_profil = request.user.profile
+    my_coords = (user_profil.latitude, user_profil.longitude)
 
-        # 3. Calculăm distanța folosind librăria instalată
-        distanta = geodesic(my_coords, friend_coords).km
+    # 1. Gasim ID-urile utilizatorilor carora le-ai dat deja swipe
+    id_uri_swiped = Swipe.objects.filter(swiper=request.user).values_list('swiped_user_id', flat=True)
 
-        if distanta <= raza_km:
-            utilizatori_in_raza.append(user)
+    # 2. Luam potentialii prieteni (excluzandu-te pe tine si pe cei deja swiped)
+    potentiali = User.objects.exclude(id=request.user.id).exclude(id__in=id_uri_swiped)
 
-    # Această listă va fi trimisă către Frontend pentru a fi afișată
-    return utilizatori_in_raza
+    rezultat_final = []
+
+    for p in potentiali:
+        try:
+            # Coordonatele potentialului prieten
+            p_coords = (p.profile.latitude, p.profile.longitude)
+
+            # CALCUL GPS: Folosim libraria geopy
+            distanta = geodesic(my_coords, p_coords).km
+
+            # FILTRARE: Doar daca este in raza de km setata
+            if distanta <= raza_maxima:
+                rezultat_final.append({
+                    'id': p.id,
+                    'username': p.username,
+                    'distanta_km': round(distanta, 1),
+                    'bio': p.profile.bio,
+                    'interese': p.profile.interests
+                })
+        except AttributeError:
+            # Sarim peste utilizatorii care nu au profilul completat (lat/lon lipsa)
+            continue
+
+    return JsonResponse({'users': rezultat_final})
