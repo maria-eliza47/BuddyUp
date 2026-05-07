@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -67,6 +68,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
         print("Logged in user: ${data['username']}");
         print("User ID: ${data['user_id']}");
+
+        Navigator.pushReplacement(
+
+          context,
+
+          MaterialPageRoute(
+
+            builder: (context) => HomeScreen(
+              username: data['username'],
+            ),
+          ),
+        );
 
       } else {
 
