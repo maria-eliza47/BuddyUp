@@ -1,0 +1,72 @@
+import 'package:flutter/material.dart';
+
+class HomeScreen extends StatelessWidget {
+
+  final String username;
+
+  const HomeScreen({
+    super.key,
+    required this.username,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+
+    return Scaffold(
+
+      appBar: AppBar(
+
+        title: const Text("BuddyUp"),
+        backgroundColor: const Color(0xFF0F172A),
+
+        actions: [
+
+          IconButton(
+
+            onPressed: () {
+
+              Navigator.pop(context);
+
+            },
+
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
+
+      body: Center(
+
+        child: Column(
+
+          mainAxisAlignment: MainAxisAlignment.center,
+
+          children: [
+
+            const Text(
+
+              "Welcome back,",
+
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.pinkAccent,
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            Text(
+
+              username,
+
+              style: const TextStyle(
+                fontSize: 22,
+                color: Colors.lightBlueAccent,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
