@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -9,18 +11,18 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
 
-  final TextEditingController emailController =
+  final TextEditingController usernameController =
       TextEditingController();
 
   final TextEditingController passwordController =
       TextEditingController();
 
-  void loginUser() {
+  Future<void> loginUser() async {
 
-    String email = emailController.text;
+    String username = usernameController.text;
     String password = passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
+    if (username.isEmpty || password.isEmpty) {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -31,14 +33,67 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    print("Email: $email");
-    print("Password: $password");
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Login logic coming soon"),
-      ),
+    final url = Uri.parse(
+      'http://127.0.0.1:8000/users/login/',
     );
+
+    try {
+
+      final response = await http.post(
+
+        url,
+
+        headers: {
+          'Content-Type': 'application/json',
+        },
+
+        body: jsonEncode({
+
+          'username': username,
+          'password': password,
+
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(data['message']),
+          ),
+        );
+
+        print("Logged in user: ${data['username']}");
+        print("User ID: ${data['user_id']}");
+
+      } else {
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              data['error'] ?? 'Login failed',
+            ),
+          ),
+        );
+      }
+
+    } catch (e) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    usernameController.dispose();
+    passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -63,10 +118,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
             TextField(
 
-              controller: emailController,
+              controller: usernameController,
 
               decoration: InputDecoration(
-                hintText: "Email",
+                hintText: "User",
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
