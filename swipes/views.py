@@ -160,7 +160,9 @@ def get_sugestii_interese(request):
         "Muzică", "Sport", "Filme", "Călătorit", "Animale",
         "Gaming", "Gătit", "Fotografie", "Lectură", "Voluntariat",
         "Tehnologie", "Artă", "Cafea", "Drumeții", "Board Games",
-        "Fitness", "Pictură", "Dans", "Programare", "Modă"
+        "Fitness", "Pictură", "Dans", "Programare", "Modă", "Seriale",
+        "Fotbal", "Baschet", "Gym", "Yoga", "Pilates", "Boxing", "Ciclism",
+        "Camping", "Design Interior", "Desen Grafic", "Astronomie", "Teatru",
     ]
     return JsonResponse({'sugestii': sugestii})
 
