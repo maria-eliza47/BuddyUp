@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends StatelessWidget {
 
@@ -25,13 +26,43 @@ class HomeScreen extends StatelessWidget {
 
             onPressed: () {
 
-              Navigator.pop(context);
+              Navigator.push(
 
+                context,
+
+                MaterialPageRoute(
+
+                  builder: (context) => ProfileScreen(
+                    username: username,
+                    description: "This is my BuddyUp profile!",
+                  ),
+                ),
+              );
             },
 
-            icon: const Icon(Icons.logout),
+            icon: const Icon(
+              Icons.person,
+              size: 32,
+              color: Colors.pinkAccent,
+            ),
           ),
         ],
+      ),
+
+      floatingActionButton: FloatingActionButton(
+
+        backgroundColor: Colors.pinkAccent,
+
+        onPressed: () {
+
+          Navigator.pop(context);
+
+        },
+
+        child: const Icon(
+          Icons.logout,
+          color: Colors.white,
+        ),
       ),
 
       body: Center(
