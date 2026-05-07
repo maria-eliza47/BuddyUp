@@ -11,36 +11,36 @@ from django.views.decorators.csrf import csrf_exempt
 from profiles.models import Profile
 import unicodedata
 
-
 # ==========================================
-# 1. LOGICA DE SWIPE SI MATCH
+# UTILITARE (Normalizare Text)
 # ==========================================
 def normalizeaza_text(text):
     if not text:
         return ""
     # 1. Litere mici
     text = text.lower()
-    # 2. Scoatem diacriticele (ă->a, î->i, etc.)
+    # 2. Scoatem diacriticele
     text = ''.join(c for c in unicodedata.normalize('NFD', text)
                    if unicodedata.category(c) != 'Mn')
     # 3. Scoatem spațiile de la margini
     return text.strip()
+
+# ==========================================
+# 1. LOGICA DE SWIPE SI MATCH
+# ==========================================
 def inregistreaza_swipe(request, swiped_user_id, tip_actiune):
     """
     Inregistreaza un swipe (LIKE/PASS) si verifica reciprocitatea pentru Match.
     """
     swiped_user = get_object_or_404(User, id=swiped_user_id)
 
-    # SIGURANTA: Nu poti sa-ti dai swipe singur
     if request.user.id == swiped_user.id:
         return JsonResponse({'error': 'Nu iti poti da swipe singur'}, status=400)
 
-    # SIGURANTA: Verificam daca ai mai dat deja swipe acestui utilizator (anti-duplicat)
     deja_vazut = Swipe.objects.filter(swiper=request.user, swiped_user=swiped_user).exists()
     if deja_vazut:
         return JsonResponse({'error': 'Ai dat deja swipe acestui utilizator'}, status=400)
 
-    # SALVARE: Inregistram actiunea in baza de date
     Swipe.objects.create(
         swiper=request.user,
         swiped_user=swiped_user,
@@ -48,9 +48,7 @@ def inregistreaza_swipe(request, swiped_user_id, tip_actiune):
     )
 
     este_match = False
-
     if tip_actiune == 'RIGHT':
-        # ALGORITM MATCH: Verificam daca si celalalt utilizator ti-a dat RIGHT anterior
         reciproc = Swipe.objects.filter(
             swiper=swiped_user,
             swiped_user=request.user,
@@ -58,7 +56,6 @@ def inregistreaza_swipe(request, swiped_user_id, tip_actiune):
         ).exists()
 
         if reciproc:
-            # Cream Match-ul oficial (get_or_create previne erorile de duplicare la nivel de DB)
             Match.objects.get_or_create(user1=request.user, user2=swiped_user)
             este_match = True
 
@@ -69,9 +66,8 @@ def inregistreaza_swipe(request, swiped_user_id, tip_actiune):
     })
 
 # ==========================================
-# 2. FILTRE SI GPS DISTANCE
+# 2. FILTRE, GPS SI DISCOVERY
 # ==========================================
-
 def get_utilizatori_filtrati(request):
     try:
         me = request.user.profile
@@ -80,24 +76,21 @@ def get_utilizatori_filtrati(request):
     except Profile.DoesNotExist:
         return JsonResponse({'error': 'Profil inexistent'}, status=404)
 
-    # 1. Parametri primiți din URL
+    # Parametri URL
     raza_maxima = float(request.GET.get('raza', 10))
     v_min = int(request.GET.get('varsta_min', 18))
     v_max = int(request.GET.get('varsta_max', 99))
 
-    # 2. Interesele mele normalizate
+    # Interesele mele
     if me.interests:
         my_interests = {normalizeaza_text(i) for i in me.interests.split(',') if i.strip()}
     else:
         my_interests = set()
 
-    # 3. Calculăm data limită pentru activitate (ex: 30 zile)
+    # Filtre de baza (activitate recenta + excludere swipe-uri vechi)
     limita_activitate = timezone.now() - timedelta(days=30)
-
-    # 4. Luăm ID-urile celor cărora le-am dat deja swipe
     id_uri_swiped = Swipe.objects.filter(swiper=request.user).values_list('swiped_user_id', flat=True)
 
-    # 5. Query principal: Excludem pe mine, pe cei văzuți deja și pe cei inactivi
     potentiali = User.objects.exclude(id=request.user.id) \
         .exclude(id__in=id_uri_swiped) \
         .filter(last_login__gte=limita_activitate)
@@ -112,23 +105,23 @@ def get_utilizatori_filtrati(request):
         except Profile.DoesNotExist:
             continue
 
-        # FILTRU VÂRSTĂ
+        # 1. FILTRU VÂRSTĂ
         if not (v_min <= profil_p.age <= v_max):
             continue
 
-        # FILTRU GPS
+        # 2. FILTRU GPS
         distanta = geodesic((me.latitude, me.longitude), (profil_p.latitude, profil_p.longitude)).km
         if distanta > raza_maxima:
             continue
 
-        # CALCUL INTERESE COMUNE
+        # 3. CALCUL INTERESE COMUNE
         if profil_p.interests:
             p_interests = {normalizeaza_text(i) for i in profil_p.interests.split(',') if i.strip()}
         else:
             p_interests = set()
         comune = my_interests.intersection(p_interests)
 
-        # CALCUL STATUS ACTIVITATE
+        # 4. CALCUL STATUS ACTIVITATE
         acum = timezone.now()
         diferenta = acum - p.last_login
         if diferenta < timedelta(minutes=15):
@@ -138,7 +131,9 @@ def get_utilizatori_filtrati(request):
         else:
             status = f"Activ acum {diferenta.days} zile"
 
-        # ADAUGARE ÎN LISTĂ (O singură dată!)
+        # 5. CALCUL MEMBRU NOU (inscris in ultimele 48h)
+        este_nou = p.date_joined > (timezone.now() - timedelta(days=2))
+
         rezultat_final.append({
             'id': p.id,
             'username': p.username,
@@ -146,24 +141,41 @@ def get_utilizatori_filtrati(request):
             'interese_comune': list(comune),
             'scor_match': len(comune),
             'status_activitate': status,
+            'este_nou': este_nou,
             'ultima_logare': p.last_login.strftime("%Y-%m-%d %H:%M")
         })
 
-    # Sortăm după scor (interese comune)
+    # Sortare dupa scor
     rezultat_final = sorted(rezultat_final, key=lambda x: x['scor_match'], reverse=True)
-
     return JsonResponse({'users': rezultat_final})
-@csrf_exempt # Important pentru cererile de pe mobil
+
+# ==========================================
+# 3. API SUGESTII INTERESE
+# ==========================================
+def get_sugestii_interese(request):
+    """
+    Returneaza lista oficiala de sugestii pentru interese.
+    """
+    sugestii = [
+        "Muzică", "Sport", "Filme", "Călătorit", "Animale",
+        "Gaming", "Gătit", "Fotografie", "Lectură", "Voluntariat",
+        "Tehnologie", "Artă", "Cafea", "Drumeții", "Board Games",
+        "Fitness", "Pictură", "Dans", "Programare", "Modă"
+    ]
+    return JsonResponse({'sugestii': sugestii})
+
+# ==========================================
+# 4. ACTUALIZARE LOCATIE
+# ==========================================
+@csrf_exempt
 def actualizeaza_locatia(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             user_profile = request.user.profile
-
             user_profile.latitude = data.get('latitude')
             user_profile.longitude = data.get('longitude')
             user_profile.save()
-
             return JsonResponse({'status': 'success', 'message': 'Locație salvată!'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)

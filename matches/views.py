@@ -8,18 +8,18 @@ def lista_matchuri_utilizator(request):
     """
     user = request.user
 
-    # Siguranță: dacă utilizatorul nu e logat (sesiune expirată)
+    # Siguranta: dacă utilizatorul nu e logat (sesiune expirata)
     if not user.is_authenticated:
         return JsonResponse({'error': 'Trebuie să fii logat'}, status=401)
 
-    # Căutăm meciurile unde userul logat este fie user1, fie user2
+    # Cautam meciurile unde userul logat este fie user1, fie user2
     matches = Match.objects.filter(Q(user1=user) | Q(user2=user))
 
     data = []
     for m in matches:
         partner = m.user2 if m.user1 == user else m.user1
 
-        # Luăm și profilul partenerului pentru extra detalii (vârstă, bio)
+        # Luam si profilul partenerului pentru extra detalii (varsta, bio)
         try:
             profil_p = partner.profile
             age = profil_p.age
