@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -18,7 +20,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController passwordController =
       TextEditingController();
 
-  void registerUser() {
+  Future<void> registerUser() async {
 
     String username = usernameController.text;
     String email = emailController.text;
@@ -37,15 +39,60 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    print("Username: $username");
-    print("Email: $email");
-    print("Password: $password");
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Register logic coming soon"),
-      ),
+    final url = Uri.parse(
+      'http://127.0.0.1:8000/users/register/',
     );
+
+    try {
+
+      final response = await http.post(
+
+        url,
+
+        headers: {
+          'Content-Type': 'application/json',
+        },
+
+        body: jsonEncode({
+
+          'username': username,
+          'email': email,
+          'password': password,
+
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 201) {
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(data['message']),
+          ),
+        );
+
+        Navigator.pop(context);
+
+      } else {
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              data['error'] ?? 'Registration failed',
+            ),
+          ),
+        );
+      }
+
+    } catch (e) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+        ),
+      );
+    }
   }
 
   @override
