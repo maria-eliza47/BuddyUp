@@ -39,9 +39,6 @@ class AIAgentService:
         })
         
         return response.content
-    def generate_icebreaker(self, user_interests, match_interests, location="București"):
-        # ... (codul tău existent rămâne aici, nu-l șterge) ...
-        pass # Am pus 'pass' aici doar ca să scurtez exemplul
 
     # ADAUGĂ ACEASTĂ FUNCȚIE NOUĂ:
     def generate_smart_match(self, current_user_data, other_profiles_data):
