@@ -12,6 +12,7 @@ urlpatterns = [
     path('swipes/', include('swipes.urls')),
     path('matches/', include('matches.urls')),
     path('profiles/', include('profiles.urls')),
+    path('reports/', include('reports.urls')),
 ]
 
 urlpatterns += static(
