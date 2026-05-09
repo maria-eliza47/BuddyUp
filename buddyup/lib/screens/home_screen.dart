@@ -1,105 +1,490 @@
 import 'package:flutter/material.dart';
-import 'profile_screen.dart';
+import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
-class HomeScreen extends StatelessWidget {
+import 'profile_screen.dart';
+import 'matches_screen.dart';
+
+class HomeScreen extends StatefulWidget {
 
   final String username;
   final int userId;
 
   const HomeScreen({
+
     super.key,
     required this.username,
     required this.userId,
   });
 
   @override
+  State<HomeScreen> createState() =>
+      _HomeScreenState();
+}
+
+class _HomeScreenState
+    extends State<HomeScreen> {
+
+  List<dynamic> profiles = [];
+
+  bool isLoading = true;
+
+  final CardSwiperController controller =
+  CardSwiperController();
+
+  @override
+  void initState() {
+
+    super.initState();
+
+    fetchPotentialMatches();
+  }
+
+  Future<void> fetchPotentialMatches() async {
+
+    final url = Uri.parse(
+
+      'http://10.0.2.2:8000/swipes/api/utilizatori/?user_id=${widget.userId}',
+    );
+
+    try {
+
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+
+        setState(() {
+
+          profiles =
+              jsonDecode(response.body);
+        });
+      }
+
+    } catch (e) {
+
+      debugPrint(
+        "Eroare la incarcare: $e",
+      );
+
+    } finally {
+
+      if (mounted) {
+
+        setState(() {
+
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<bool> _onSwipe(
+
+      int previousIndex,
+      int? currentIndex,
+      CardSwiperDirection direction,
+
+      ) async {
+
+    if (previousIndex >= profiles.length) {
+
+      return false;
+    }
+
+    final swipedProfile =
+    profiles[previousIndex];
+
+    final String swipeType =
+
+    (direction ==
+        CardSwiperDirection.right)
+
+        ? 'like'
+        : 'dislike';
+
+    final int swipedId =
+    swipedProfile['id'];
+
+    final url = Uri.parse(
+
+      'http://10.0.2.2:8000/swipes/api/inregistreaza/$swipedId/$swipeType/?from_user=${widget.userId}',
+    );
+
+    try {
+
+      final response =
+      await http.post(url);
+
+      if (response.statusCode == 200) {
+
+        final data =
+        jsonDecode(response.body);
+
+        if (data['is_match'] == true) {
+
+          ScaffoldMessenger.of(context)
+              .showSnackBar(
+
+            SnackBar(
+
+              content: Text(
+
+                "MATCH! Te-ai potrivit cu ${swipedProfile['username']}!",
+              ),
+
+              backgroundColor:
+              Colors.pinkAccent,
+
+              behavior:
+              SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+
+      return true;
+
+    } catch (e) {
+
+      return false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
 
     return Scaffold(
 
+      backgroundColor:
+      const Color(0xFF0F172A),
+
       appBar: AppBar(
 
-        title: const Text("BuddyUp"),
-        backgroundColor: const Color(0xFF0F172A),
+        title: const Text(
+
+          "BuddyUp",
+
+          style: TextStyle(
+
+            fontWeight: FontWeight.bold,
+            color: Colors.cyanAccent,
+          ),
+        ),
+
+        backgroundColor:
+        Colors.transparent,
+
+        elevation: 0,
+
+        centerTitle: true,
+
+        leading: IconButton(
+
+          icon: const Icon(
+
+            Icons.message,
+            color: Colors.cyanAccent,
+          ),
+
+          onPressed: () => Navigator.push(
+
+            context,
+
+            MaterialPageRoute(
+
+              builder: (context) =>
+                  MatchesScreen(
+
+                    userId: widget.userId,
+                  ),
+            ),
+          ),
+        ),
 
         actions: [
 
           IconButton(
 
-            onPressed: () {
-
-              Navigator.push(
-
-                context,
-
-                MaterialPageRoute(
-
-                  builder: (context) => ProfileScreen(
-                    username: username,
-                    description: "Loading...",
-                    userId: userId,
-                  ),
-                ),
-              );
-            },
-
             icon: const Icon(
+
               Icons.person,
-              size: 32,
-              color: Colors.pinkAccent,
+              color: Colors.cyanAccent,
+            ),
+
+            onPressed: () => Navigator.push(
+
+              context,
+
+              MaterialPageRoute(
+
+                builder: (context) =>
+                    ProfileScreen(
+
+                      username:
+                      widget.username,
+
+                      description: "",
+
+                      userId: widget.userId,
+                    ),
+              ),
             ),
           ),
         ],
       ),
 
-      floatingActionButton: FloatingActionButton(
+      body: isLoading
 
-        backgroundColor: Colors.pinkAccent,
+          ? const Center(
 
-        onPressed: () {
+        child:
+        CircularProgressIndicator(
 
-          Navigator.pop(context);
-
-        },
-
-        child: const Icon(
-          Icons.logout,
-          color: Colors.white,
+          color: Colors.cyanAccent,
         ),
+      )
+
+          : profiles.isEmpty
+
+          ? _buildEmptyState()
+
+          : Column(
+
+        children: [
+
+          Expanded(
+
+            child: CardSwiper(
+
+              controller:
+              controller,
+
+              cardsCount:
+              profiles.length,
+
+              onSwipe: _onSwipe,
+
+              numberOfCardsDisplayed:
+
+              profiles.length > 3
+
+                  ? 3
+                  : profiles.length,
+
+              cardBuilder:
+
+                  (
+                  context,
+                  index,
+                  h,
+                  v,
+                  ) =>
+
+                  _buildProfileCard(
+                    profiles[index],
+                  ),
+            ),
+          ),
+
+          _buildActionButtons(),
+
+          const SizedBox(
+            height: 20,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileCard(
+      dynamic profile) {
+
+    String? imageUrl =
+    profile['profile_picture'];
+
+    if (
+
+    imageUrl != null &&
+        imageUrl.contains('127.0.0.1')
+
+    ) {
+
+      imageUrl = imageUrl.replaceAll(
+        '127.0.0.1',
+        '10.0.2.2',
+      );
+    }
+
+    return Container(
+
+      decoration: BoxDecoration(
+
+        color: const Color(0xFF1E293B),
+
+        borderRadius:
+        BorderRadius.circular(20),
       ),
 
-      body: Center(
+      child: Stack(
 
-        child: Column(
+        children: [
 
-          mainAxisAlignment: MainAxisAlignment.center,
+          Positioned.fill(
 
-          children: [
+            child:
 
-            const Text(
+            imageUrl != null
 
-              "Welcome back,",
+                ? Image.network(
+
+              imageUrl,
+
+              fit: BoxFit.cover,
+            )
+
+                : const Icon(
+
+              Icons.person,
+
+              size: 100,
+
+              color: Colors.white24,
+            ),
+          ),
+
+          Positioned(
+
+            bottom: 20,
+            left: 20,
+
+            child: Column(
+
+              crossAxisAlignment:
+              CrossAxisAlignment.start,
+
+              children: [
+
+                Text(
+
+                  "${profile['username']}, ${profile['age']}",
+
+                  style: const TextStyle(
+
+                    color: Colors.white,
+
+                    fontSize: 28,
+
+                    fontWeight:
+                    FontWeight.bold,
+                  ),
+                ),
+
+                Text(
+
+                  profile['interests'] ?? "",
+
+                  style: const TextStyle(
+
+                    color: Colors.cyanAccent,
+
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+
+    return Row(
+
+      mainAxisAlignment:
+      MainAxisAlignment.spaceEvenly,
+
+      children: [
+
+        IconButton(
+
+          icon: const Icon(
+
+            Icons.close,
+
+            color: Colors.redAccent,
+
+            size: 40,
+          ),
+
+          onPressed: () =>
+
+              controller.swipe(
+                CardSwiperDirection.left,
+              ),
+        ),
+
+        IconButton(
+
+          icon: const Icon(
+
+            Icons.favorite,
+
+            color: Colors.greenAccent,
+
+            size: 40,
+          ),
+
+          onPressed: () =>
+
+              controller.swipe(
+                CardSwiperDirection.right,
+              ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+
+    return Center(
+
+      child: Column(
+
+        mainAxisAlignment:
+        MainAxisAlignment.center,
+
+        children: [
+
+          const Text(
+
+            "Nu mai sunt utilizatori!",
+
+            style: TextStyle(
+
+              color: Colors.white70,
+
+              fontSize: 18,
+            ),
+          ),
+
+          TextButton(
+
+            onPressed:
+            fetchPotentialMatches,
+
+            child: const Text(
+
+              "Reincarca",
 
               style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.pinkAccent,
+                color: Colors.cyanAccent,
               ),
             ),
-
-            const SizedBox(height: 20),
-
-            Text(
-
-              username,
-
-              style: const TextStyle(
-                fontSize: 22,
-                color: Colors.lightBlueAccent,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

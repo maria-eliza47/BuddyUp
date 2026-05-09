@@ -12,7 +12,9 @@ class ProfileScreen extends StatefulWidget {
   final int userId;
 
   const ProfileScreen({
+
     super.key,
+
     required this.username,
     required this.description,
     required this.userId,
@@ -23,7 +25,8 @@ class ProfileScreen extends StatefulWidget {
       _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState
+    extends State<ProfileScreen> {
 
   String bio = "";
   String interests = "";
@@ -31,6 +34,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int? age;
 
   String? profilePictureUrl;
+
+  List<String> galleryImages = [];
 
   bool isLoading = true;
 
@@ -46,33 +51,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (response.statusCode == 200) {
 
-        final data = jsonDecode(response.body);
+        final data =
+        jsonDecode(response.body);
+
+        final galleryResponse =
+        await http.get(
+
+          Uri.parse(
+            'http://10.0.2.2:8000/profiles/gallery/${widget.userId}/',
+          ),
+        );
+
+        final galleryData =
+        jsonDecode(
+          galleryResponse.body,
+        );
 
         setState(() {
 
           bio = data['bio'] ?? "";
-          interests = data['interests'] ?? "";
+
+          interests =
+              data['interests'] ?? "";
 
           age = data['age'];
 
           profilePictureUrl =
           data['profile_picture'];
 
+          galleryImages =
+          List<String>.from(
+
+            galleryData.map(
+
+                  (image) => image['image']
+                  .replaceAll(
+                '127.0.0.1',
+                '10.0.2.2',
+              ),
+            ),
+          );
+
           isLoading = false;
         });
 
       } else {
 
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context)
+            .showSnackBar(
+
           const SnackBar(
-            content: Text("Failed to load profile"),
+
+            content: Text(
+              "Failed to load profile",
+            ),
           ),
         );
       }
 
     } catch (e) {
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
+
         SnackBar(
           content: Text("Error: $e"),
         ),
@@ -93,31 +134,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
 
+      backgroundColor:
+      const Color(0xFF0F172A),
+
       appBar: AppBar(
-        title: const Text("My Profile"),
-        backgroundColor: const Color(0xFF0F172A),
+
+        title: const Text(
+          "My Profile",
+        ),
+
+        backgroundColor:
+        const Color(0xFF0F172A),
       ),
 
       body: isLoading
 
           ? const Center(
-        child: CircularProgressIndicator(),
+        child:
+        CircularProgressIndicator(),
       )
 
           : Padding(
 
-        padding: const EdgeInsets.all(24),
+        padding:
+        const EdgeInsets.all(24),
 
         child: Column(
 
           children: [
 
-            const SizedBox(height: 40),
+            const SizedBox(
+              height: 40,
+            ),
 
             CircleAvatar(
 
               radius: 60,
-              backgroundColor: Colors.blueAccent,
+
+              backgroundColor:
+              Colors.blueAccent,
 
               backgroundImage:
 
@@ -139,28 +194,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
               profilePictureUrl == null
 
                   ? const Icon(
+
                 Icons.person,
+
                 size: 60,
-                color: Colors.white,
+
+                color:
+                Colors.white,
               )
 
                   : null,
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(
+              height: 30,
+            ),
 
             Text(
 
               widget.username,
 
-              style: const TextStyle(
+              style:
+              const TextStyle(
+
                 fontSize: 30,
-                fontWeight: FontWeight.bold,
+
+                fontWeight:
+                FontWeight.bold,
+
                 color: Colors.white,
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(
+              height: 20,
+            ),
 
             Text(
 
@@ -168,45 +236,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? "No bio yet"
                   : bio,
 
-              textAlign: TextAlign.center,
+              textAlign:
+              TextAlign.center,
 
-              style: const TextStyle(
+              style:
+              const TextStyle(
+
                 fontSize: 18,
-                color: Colors.white70,
+
+                color:
+                Colors.white70,
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(
+              height: 20,
+            ),
 
             Text(
 
               interests.isEmpty
+
                   ? "No interests added"
+
                   : "Interests: $interests",
 
-              textAlign: TextAlign.center,
+              textAlign:
+              TextAlign.center,
 
-              style: const TextStyle(
+              style:
+              const TextStyle(
+
                 fontSize: 18,
-                color: Colors.white70,
+
+                color:
+                Colors.white70,
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(
+              height: 20,
+            ),
 
             Text(
 
               age == null
+
                   ? "Age not set"
+
                   : "Age: $age",
 
-              style: const TextStyle(
+              style:
+              const TextStyle(
+
                 fontSize: 18,
-                color: Colors.white70,
+
+                color:
+                Colors.white70,
               ),
             ),
 
-            const SizedBox(height: 50),
+            const SizedBox(
+              height: 40,
+            ),
 
             SizedBox(
 
@@ -227,7 +319,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       builder: (context) =>
                           EditProfileScreen(
 
-                            userId: widget.userId,
+                            userId:
+                            widget.userId,
 
                             currentBio: bio,
 
@@ -248,6 +341,114 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: const Text(
                   "Edit Profile",
                 ),
+              ),
+            ),
+
+            const SizedBox(
+              height: 20,
+            ),
+
+            SizedBox(
+
+              width: double.infinity,
+              height: 55,
+
+              child: ElevatedButton(
+
+                style:
+                ElevatedButton.styleFrom(
+
+                  backgroundColor:
+                  Colors.redAccent,
+                ),
+
+                onPressed: () {
+
+                  Navigator.popUntil(
+
+                    context,
+
+                        (route) =>
+                    route.isFirst,
+                  );
+                },
+
+                child: const Text(
+
+                  "Logout",
+
+                  style: TextStyle(
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(
+              height: 40,
+            ),
+
+            const Align(
+
+              alignment:
+              Alignment.centerLeft,
+
+              child: Text(
+
+                "Gallery",
+
+                style: TextStyle(
+
+                  fontSize: 24,
+
+                  fontWeight:
+                  FontWeight.bold,
+
+                  color: Colors.white,
+                ),
+              ),
+            ),
+
+            const SizedBox(
+              height: 20,
+            ),
+
+            Expanded(
+
+              child: GridView.builder(
+
+                itemCount:
+                galleryImages.length,
+
+                gridDelegate:
+
+                const SliverGridDelegateWithFixedCrossAxisCount(
+
+                  crossAxisCount: 2,
+
+                  crossAxisSpacing: 10,
+
+                  mainAxisSpacing: 10,
+                ),
+
+                itemBuilder:
+                    (context, index) {
+
+                  return ClipRRect(
+
+                    borderRadius:
+                    BorderRadius.circular(
+                      15,
+                    ),
+
+                    child: Image.network(
+
+                      galleryImages[index],
+
+                      fit: BoxFit.cover,
+                    ),
+                  );
+                },
               ),
             ),
           ],

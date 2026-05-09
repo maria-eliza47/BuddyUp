@@ -1,12 +1,22 @@
 from django.shortcuts import render
 
-# Create your views here.
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.decorators import parser_classes
-from .models import Profile
+
+from rest_framework.parsers import (
+    MultiPartParser,
+    FormParser
+)
+
+from rest_framework.decorators import (
+    parser_classes
+)
+
+from .models import (
+    Profile,
+    ProfileImage
+)
 
 
 @api_view(['GET'])
@@ -31,15 +41,20 @@ def profile_detail_view(request, user_id):
 
         'username': profile.user.username,
         'email': profile.user.email,
+
         'age': profile.age,
         'bio': profile.bio,
         'interests': profile.interests,
+
         'latitude': profile.latitude,
         'longitude': profile.longitude,
+
         'profile_picture': (
+
             request.build_absolute_uri(
                 profile.profile_picture.url
             )
+
             if profile.profile_picture
             else None
         ),
@@ -99,6 +114,7 @@ def profile_update_view(request, user_id):
         }
     )
 
+
 @api_view(['PUT'])
 @parser_classes([MultiPartParser, FormParser])
 def upload_profile_picture_view(request, user_id):
@@ -138,3 +154,82 @@ def upload_profile_picture_view(request, user_id):
             'message': 'Profile picture uploaded successfully'
         }
     )
+
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def upload_gallery_image_view(request, user_id):
+
+    try:
+
+        profile = Profile.objects.get(
+            user__id=user_id
+        )
+
+    except Profile.DoesNotExist:
+
+        return Response(
+            {
+                'error': 'Profile not found'
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    if 'image' not in request.FILES:
+
+        return Response(
+            {
+                'error': 'No image provided'
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    ProfileImage.objects.create(
+
+        profile=profile,
+        image=request.FILES['image']
+    )
+
+    return Response(
+        {
+            'message': 'Gallery image uploaded'
+        }
+    )
+
+
+@api_view(['GET'])
+def gallery_images_view(request, user_id):
+
+    try:
+
+        profile = Profile.objects.get(
+            user__id=user_id
+        )
+
+    except Profile.DoesNotExist:
+
+        return Response(
+            {
+                'error': 'Profile not found'
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    images = ProfileImage.objects.filter(
+        profile=profile
+    )
+
+    data = []
+
+    for image in images:
+
+        data.append({
+
+            'id': image.id,
+
+            'image': request.build_absolute_uri(
+                image.image.url
+            ),
+        })
+
+    return Response(data)
