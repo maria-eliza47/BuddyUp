@@ -2,14 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'edit_profile_screen.dart';
+
+import 'profile_screen.dart';
 import 'matches_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String username;
   final int userId;
 
-  const HomeScreen({super.key, required this.username, required this.userId});
+  const HomeScreen({
+    super.key,
+    required this.username,
+    required this.userId,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -26,30 +31,56 @@ class _HomeScreenState extends State<HomeScreen> {
     fetchPotentialMatches();
   }
 
+  // FUNCTIA CARE INCARCA DATELE
   Future<void> fetchPotentialMatches() async {
-    final url = Uri.parse('http://10.0.2.2:8000/swipes/api/utilizatori/?user_id=${widget.userId}');
+    if (!mounted) return;
+    setState(() => isLoading = true);
+
+    final url = Uri.parse(
+      'http://10.0.2.2:8000/swipes/api/utilizatori/?user_id=${widget.userId}',
+    );
+
     try {
-      final response = await http.get(url);
+      final response = await http.get(url).timeout(const Duration(seconds: 10));
+
       if (response.statusCode == 200) {
         setState(() {
           profiles = jsonDecode(response.body);
         });
+      } else {
+        debugPrint("Eroare Server: ${response.statusCode}");
       }
     } catch (e) {
       debugPrint("Eroare la incarcare: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Eroare de conexiune la server!")),
+        );
+      }
     } finally {
-      if (mounted) setState(() => isLoading = false);
+      // ACEASTA SECTIUNE OPRESTE CERCUL DE INCARCARE INDIFERENT DE REZULTAT
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
-  Future<bool> _onSwipe(int previousIndex, int? currentIndex, CardSwiperDirection direction) async {
+  Future<bool> _onSwipe(
+      int previousIndex,
+      int? currentIndex,
+      CardSwiperDirection direction,
+      ) async {
     if (previousIndex >= profiles.length) return false;
 
     final swipedProfile = profiles[previousIndex];
     final String swipeType = (direction == CardSwiperDirection.right) ? 'like' : 'dislike';
     final int swipedId = swipedProfile['id'];
 
-    final url = Uri.parse('http://10.0.2.2:8000/swipes/api/inregistreaza/$swipedId/$swipeType/?from_user=${widget.userId}');
+    final url = Uri.parse(
+      'http://10.0.2.2:8000/swipes/api/inregistreaza/$swipedId/$swipeType/?from_user=${widget.userId}',
+    );
 
     try {
       final response = await http.post(url);
@@ -76,25 +107,34 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
-        title: const Text("BuddyUp", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+        title: const Text(
+          "BuddyUp",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        // Navigare catre Matches (stanga)
         leading: IconButton(
           icon: const Icon(Icons.message, color: Colors.cyanAccent),
           onPressed: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => MatchesScreen(userId: widget.userId)),
+            MaterialPageRoute(
+              builder: (context) => MatchesScreen(userId: widget.userId),
+            ),
           ),
         ),
-        // Navigare catre Profile (dreapta)
         actions: [
           IconButton(
             icon: const Icon(Icons.person, color: Colors.cyanAccent),
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => EditProfileScreen(userId: widget.userId, currentBio: "", currentInterests: "", currentAge: null)),
+              MaterialPageRoute(
+                builder: (context) => ProfileScreen(
+                  username: widget.username,
+                  description: "",
+                  userId: widget.userId,
+                ),
+              ),
             ),
           ),
         ],
@@ -123,9 +163,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildProfileCard(dynamic profile) {
     String? imageUrl = profile['profile_picture'];
-    if (imageUrl != null && imageUrl.contains('127.0.0.1')) {
+
+    if (imageUrl != null) {
+      if (!imageUrl.startsWith('http')) {
+        imageUrl = 'http://10.0.2.2:8000$imageUrl';
+      }
       imageUrl = imageUrl.replaceAll('127.0.0.1', '10.0.2.2');
     }
+
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
@@ -133,14 +178,61 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Stack(
         children: [
-          Positioned.fill(child: imageUrl != null ? Image.network(imageUrl, fit: BoxFit.cover) : const Icon(Icons.person, size: 100, color: Colors.white24)),
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: imageUrl != null
+                  ? Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.black26,
+                    child: const Icon(Icons.person, size: 100, color: Colors.white10),
+                  );
+                },
+              )
+                  : const Icon(Icons.person, size: 100, color: Colors.white10),
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Colors.black.withOpacity(0.85)],
+                ),
+              ),
+            ),
+          ),
           Positioned(
-            bottom: 20, left: 20,
+            bottom: 20,
+            left: 20,
+            right: 20,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("${profile['username']}, ${profile['age']}", style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-                Text(profile['interests'] ?? "", style: const TextStyle(color: Colors.cyanAccent, fontSize: 16)),
+                Text(
+                  "${profile['username']}, ${profile['age'] ?? '?'}",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  profile['interests'] ?? "Fara interese",
+                  style: const TextStyle(color: Colors.cyanAccent, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  profile['bio'] ?? "Hai sa fim buddies!",
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
@@ -153,8 +245,14 @@ class _HomeScreenState extends State<HomeScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        IconButton(icon: const Icon(Icons.close, color: Colors.redAccent, size: 40), onPressed: () => controller.swipe(CardSwiperDirection.left)),
-        IconButton(icon: const Icon(Icons.favorite, color: Colors.greenAccent, size: 40), onPressed: () => controller.swipe(CardSwiperDirection.right)),
+        IconButton(
+          icon: const Icon(Icons.close, color: Colors.redAccent, size: 45),
+          onPressed: () => controller.swipe(CardSwiperDirection.left),
+        ),
+        IconButton(
+          icon: const Icon(Icons.favorite, color: Colors.greenAccent, size: 45),
+          onPressed: () => controller.swipe(CardSwiperDirection.right),
+        ),
       ],
     );
   }
@@ -164,8 +262,16 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text("Nu mai sunt utilizatori!", style: TextStyle(color: Colors.white70, fontSize: 18)),
-          TextButton(onPressed: fetchPotentialMatches, child: const Text("Reincarca", style: TextStyle(color: Colors.cyanAccent))),
+          const Text(
+            "Nu mai sunt utilizatori!",
+            style: TextStyle(color: Colors.white70, fontSize: 18),
+          ),
+          const SizedBox(height: 10),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent.withOpacity(0.2)),
+            onPressed: fetchPotentialMatches,
+            child: const Text("Reincarca", style: TextStyle(color: Colors.cyanAccent)),
+          ),
         ],
       ),
     );
