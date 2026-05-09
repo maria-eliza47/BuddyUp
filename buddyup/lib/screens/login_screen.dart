@@ -35,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     final url = Uri.parse(
-      'http://127.0.0.1:8000/users/login/',
+      'http://10.0.2.2:8000/users/login/',
     );
 
     try {
@@ -77,6 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
             builder: (context) => HomeScreen(
               username: data['username'],
+              userId: data['user_id'],
             ),
           ),
         );

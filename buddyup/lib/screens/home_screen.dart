@@ -4,10 +4,12 @@ import 'profile_screen.dart';
 class HomeScreen extends StatelessWidget {
 
   final String username;
+  final int userId;
 
   const HomeScreen({
     super.key,
     required this.username,
+    required this.userId,
   });
 
   @override
@@ -34,7 +36,8 @@ class HomeScreen extends StatelessWidget {
 
                   builder: (context) => ProfileScreen(
                     username: username,
-                    description: "This is my BuddyUp profile!",
+                    description: "Loading...",
+                    userId: userId,
                   ),
                 ),
               );
