@@ -1,9 +1,16 @@
-venv/
-.idea/
+# Python / Django
 __pycache__/
-*.pyc
-.env
+*.py[cod]
+*$py.class
+*.sqlite3
 db.sqlite3
-ios/Flutter/ephemeral/
-macos/Flutter/ephemeral/
+venv/
+env/
+.env
+
+# Flutter / Dart
 .dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
