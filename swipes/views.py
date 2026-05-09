@@ -7,16 +7,18 @@ from .models import Swipe
 from matches.models import Match
 from geopy.distance import geodesic
 import json
+import unicodedata
 from django.views.decorators.csrf import csrf_exempt
 from profiles.models import Profile
-import unicodedata
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from django.db.models import Q
 
 # ==========================================
-# UTILITARE
+# UTILITARE (Normalizare si Curatare)
 # ==========================================
 def normalizeaza_text(text):
+    """Elimina diacriticele si transforma in litere mici."""
     if not text:
         return ""
     text = text.lower()
@@ -35,23 +37,25 @@ def inregistreaza_swipe(request, swiped_user_id, tip_actiune):
     """
     from_user_id = request.GET.get('from_user')
 
-    # Identificam cine da swipe
+    # Identificare Swiper (cel care trimite swipe-ul)
+    swiper = None
     if request.user.is_authenticated:
         swiper = request.user
-    elif from_user_id:
-        swiper = get_object_or_404(User, id=from_user_id)
-    else:
-        return JsonResponse({'error': 'ID utilizator sursa lipseste'}, status=400)
+    elif from_user_id and from_user_id != 'null':
+        swiper = User.objects.filter(id=from_user_id).first()
+
+    if not swiper:
+        return JsonResponse({'error': 'Utilizator sursa neidentificat'}, status=400)
 
     swiped_user = get_object_or_404(User, id=swiped_user_id)
 
-    # Mapam actiunea din Flutter in formatul bazei de date
+    # Mapam actiunea din Flutter (like/dislike) -> DB (RIGHT/LEFT)
     action = 'RIGHT' if tip_actiune.lower() == 'like' else 'LEFT'
 
     # Stergem swipe-ul vechi daca exista pentru a permite re-swipe (Reset la login)
     Swipe.objects.filter(swiper=swiper, swiped_user=swiped_user).delete()
 
-    # Salvam swipe-ul nou
+    # Salvam noul swipe
     Swipe.objects.create(
         swiper=swiper,
         swiped_user=swiped_user,
@@ -68,8 +72,9 @@ def inregistreaza_swipe(request, swiped_user_id, tip_actiune):
         ).exists()
 
         if reciproc:
-            # Cream match-ul oficial in tabelul de Match
-            Match.objects.get_or_create(user1=swiper, user2=swiped_user)
+            # Cream match-ul oficial (evitam duplicatele prin sortarea ID-urilor)
+            u1, u2 = (swiper, swiped_user) if swiper.id < swiped_user.id else (swiped_user, swiper)
+            Match.objects.get_or_create(user1=u1, user2=u2)
             este_match = True
 
     return JsonResponse({
@@ -79,53 +84,77 @@ def inregistreaza_swipe(request, swiped_user_id, tip_actiune):
     })
 
 # ==========================================
-# 2. FILTRE SI DISCOVERY (PERMISIV)
+# 2. FILTRE SI DISCOVERY (FIX PENTRU LOADING)
 # ==========================================
 @api_view(['GET'])
 def get_utilizatori_filtrati(request):
+    """
+    Returneaza lista de utilizatori pentru ecranul de Swipe.
+    """
     try:
         user_id_url = request.GET.get('user_id')
         current_user = None
 
+        # Detectam utilizatorul curent
         if request.user.is_authenticated:
             current_user = request.user
-        elif user_id_url:
+        elif user_id_url and user_id_url != 'null':
             current_user = User.objects.filter(id=user_id_url).first()
 
-        # Incepem cu toti userii
-        potentiali = User.objects.all()
+        # Incepem cu toti utilizatorii
+        potentiali = User.objects.all().select_related('profile')
 
+        # Daca stim cine e user-ul, il excludem pe el insusi
         if current_user:
-            # Excludem doar propriul profil
-            # NU mai folosim exclude(id__in=vazuti_ids) ca sa-i poti vedea iar
             potentiali = potentiali.exclude(id=current_user.id)
+
+            # OPTIONAL: Daca vrei sa ascunzi userii carora le-ai dat deja swipe,
+            # de-comenteaza linia de mai jos:
+            # vazuti_ids = Swipe.objects.filter(swiper=current_user).values_list('swiped_user_id', flat=True)
+            # potentiali = potentiali.exclude(id__in=vazuti_ids)
 
         rezultat_final = []
         for p in potentiali:
             try:
+                # Daca utilizatorul nu are profil creat, il sarim pentru a evita erorile
+                if not hasattr(p, 'profile'):
+                    continue
+
                 profil_p = p.profile
+
+                # Rezolvam URL-ul pozei de profil
+                foto_url = None
+                if profil_p.profile_picture:
+                    foto_url = profil_p.profile_picture.url
+
                 rezultat_final.append({
                     'id': p.id,
                     'username': p.username,
                     'age': profil_p.age or 20,
                     'bio': profil_p.bio or "Hey! Let's be buddies.",
                     'interests': profil_p.interests or "",
-                    'profile_picture': profil_p.profile_picture.url if profil_p.profile_picture else None,
+                    'profile_picture': foto_url,
                 })
-            except Profile.DoesNotExist:
+            except Exception as e:
+                # Daca un profil are date corupte, trecem peste el fara sa blocam lista
+                print(f"Eroare la procesarea profilului {p.id}: {e}")
                 continue
 
+        # Returnam lista (chiar daca e goala, cercul de loading se va opri)
         return JsonResponse(rezultat_final, safe=False)
+
     except Exception as e:
+        print(f"EROARE CRITICA SERVER: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 # ==========================================
 # 3. ALTE FUNCTII
 # ==========================================
 def get_sugestii_interese(request):
-    sugestii = ["Muzica", "Sport", "Filme", "Gaming", "Gatit", "Tehnologie"]
+    sugestii = ["Muzica", "Sport", "Filme", "Gaming", "Gatit", "Tehnologie", "Calatorii", "Arta"]
     return JsonResponse({'sugestii': sugestii})
 
 @csrf_exempt
 def actualizeaza_locatia(request):
+    """Endpoint pentru update GPS (placeholder)."""
     return JsonResponse({'status': 'ok'})

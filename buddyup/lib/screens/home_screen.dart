@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'profile_screen.dart';
+
+import 'profile_screen.dart';
 import 'matches_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -13,9 +15,13 @@ class HomeScreen extends StatefulWidget {
 
   const HomeScreen({
 
+    
     super.key,
+   
     required this.username,
+   
     required this.userId,
+  ,
   });
 
   @override
@@ -41,16 +47,24 @@ class _HomeScreenState
     fetchPotentialMatches();
   }
 
+  // FUNCTIA CARE INCARCA DATELE
   Future<void> fetchPotentialMatches() async {
+
+    if (!mounted) return;
+    setState(() => isLoading = true);
 
     final url = Uri.parse(
 
+      
       'http://10.0.2.2:8000/swipes/api/utilizatori/?user_id=${widget.userId}',
+    ,
     );
+
 
     try {
 
-      final response = await http.get(url);
+      final response = await http.get(url).timeout(const Duration(seconds: 10));
+
 
       if (response.statusCode == 200) {
 
@@ -59,6 +73,8 @@ class _HomeScreenState
           profiles =
               jsonDecode(response.body);
         });
+      } else {
+        debugPrint("Eroare Server: ${response.statusCode}");
       }
 
     } catch (e) {
@@ -67,6 +83,11 @@ class _HomeScreenState
         "Eroare la incarcare: $e",
       );
 
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Eroare de conexiune la server!")),
+        );
+      }
     } finally {
 
       if (mounted) {
@@ -81,10 +102,14 @@ class _HomeScreenState
 
   Future<bool> _onSwipe(
 
+      
       int previousIndex,
+     
       int? currentIndex,
+     
       CardSwiperDirection direction,
 
+      ,
       ) async {
 
     if (previousIndex >= profiles.length) {
@@ -108,7 +133,9 @@ class _HomeScreenState
 
     final url = Uri.parse(
 
+      
       'http://10.0.2.2:8000/swipes/api/inregistreaza/$swipedId/$swipeType/?from_user=${widget.userId}',
+    ,
     );
 
     try {
@@ -163,13 +190,16 @@ class _HomeScreenState
 
         title: const Text(
 
+          
           "BuddyUp",
 
+         
           style: TextStyle(
 
             fontWeight: FontWeight.bold,
             color: Colors.cyanAccent,
-          ),
+          ,
+        ),
         ),
 
         backgroundColor:
@@ -193,11 +223,13 @@ class _HomeScreenState
 
             MaterialPageRoute(
 
+              
               builder: (context) =>
                   MatchesScreen(
 
                     userId: widget.userId,
                   ),
+            ,
             ),
           ),
         ),
@@ -356,8 +388,10 @@ class _HomeScreenState
           Positioned(
 
             bottom: 20,
+           
             left: 20,
 
+            right: 20,
             child: Column(
 
               crossAxisAlignment:
@@ -460,21 +494,28 @@ class _HomeScreenState
 
           const Text(
 
+            
             "Nu mai sunt utilizatori!",
 
+           
             style: TextStyle(
 
               color: Colors.white70,
 
               fontSize: 18,
             ),
+          ,
           ),
 
-          TextButton(
+          const SizedBox(height: 10),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent.withOpacity(0.2)),
+            
 
             onPressed:
             fetchPotentialMatches,
 
+           
             child: const Text(
 
               "Reincarca",
@@ -483,6 +524,7 @@ class _HomeScreenState
                 color: Colors.cyanAccent,
               ),
             ),
+          ,
           ),
         ],
       ),
