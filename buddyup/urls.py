@@ -14,6 +14,7 @@ urlpatterns = [
     path('matches/', include('matches.urls')),
     path('profiles/', include('profiles.urls')),
     path('reports/', include('reports.urls')),
+    path('chat/', include('chat.urls')),
 ]
 
 urlpatterns += static(
