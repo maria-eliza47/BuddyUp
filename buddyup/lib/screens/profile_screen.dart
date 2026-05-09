@@ -1,15 +1,92 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
 
-class ProfileScreen extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+import 'edit_profile_screen.dart';
+
+class ProfileScreen extends StatefulWidget {
 
   final String username;
   final String description;
+  final int userId;
 
   const ProfileScreen({
     super.key,
     required this.username,
     required this.description,
+    required this.userId,
   });
+
+  @override
+  State<ProfileScreen> createState() =>
+      _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+
+  String bio = "";
+  String interests = "";
+
+  int? age;
+
+  String? profilePictureUrl;
+
+  bool isLoading = true;
+
+  Future<void> loadProfile() async {
+
+    final url = Uri.parse(
+      'http://10.0.2.2:8000/profiles/${widget.userId}/',
+    );
+
+    try {
+
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+
+        final data = jsonDecode(response.body);
+
+        setState(() {
+
+          bio = data['bio'] ?? "";
+          interests = data['interests'] ?? "";
+
+          age = data['age'];
+
+          profilePictureUrl =
+          data['profile_picture'];
+
+          isLoading = false;
+        });
+
+      } else {
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Failed to load profile"),
+          ),
+        );
+      }
+
+    } catch (e) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: $e"),
+        ),
+      );
+    }
+  }
+
+  @override
+  void initState() {
+
+    super.initState();
+
+    loadProfile();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +98,13 @@ class ProfileScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF0F172A),
       ),
 
-      body: Padding(
+      body: isLoading
+
+          ? const Center(
+        child: CircularProgressIndicator(),
+      )
+
+          : Padding(
 
         padding: const EdgeInsets.all(24),
 
@@ -31,22 +114,44 @@ class ProfileScreen extends StatelessWidget {
 
             const SizedBox(height: 40),
 
-            const CircleAvatar(
+            CircleAvatar(
+
               radius: 60,
               backgroundColor: Colors.blueAccent,
 
-              child: Icon(
+              backgroundImage:
+
+              profilePictureUrl != null
+
+                  ? NetworkImage(
+
+                profilePictureUrl!
+                    .replaceAll(
+                  '127.0.0.1',
+                  '10.0.2.2',
+                ),
+              )
+
+                  : null,
+
+              child:
+
+              profilePictureUrl == null
+
+                  ? const Icon(
                 Icons.person,
                 size: 60,
                 color: Colors.white,
-              ),
+              )
+
+                  : null,
             ),
 
             const SizedBox(height: 30),
 
             Text(
 
-              username,
+              widget.username,
 
               style: const TextStyle(
                 fontSize: 30,
@@ -55,19 +160,51 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 15),
+            const SizedBox(height: 20),
 
             Text(
 
-                    description,
+              bio.isEmpty
+                  ? "No bio yet"
+                  : bio,
 
-                    textAlign: TextAlign.center,
+              textAlign: TextAlign.center,
 
-                    style: const TextStyle(
-                      fontSize: 18,
-                      color: Colors.white70,
-                    ),
-                  ),
+              style: const TextStyle(
+                fontSize: 18,
+                color: Colors.white70,
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            Text(
+
+              interests.isEmpty
+                  ? "No interests added"
+                  : "Interests: $interests",
+
+              textAlign: TextAlign.center,
+
+              style: const TextStyle(
+                fontSize: 18,
+                color: Colors.white70,
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            Text(
+
+              age == null
+                  ? "Age not set"
+                  : "Age: $age",
+
+              style: const TextStyle(
+                fontSize: 18,
+                color: Colors.white70,
+              ),
+            ),
 
             const SizedBox(height: 50),
 
@@ -78,7 +215,35 @@ class ProfileScreen extends StatelessWidget {
 
               child: ElevatedButton(
 
-                onPressed: () {},
+                onPressed: () async {
+
+                  final result =
+                  await Navigator.push(
+
+                    context,
+
+                    MaterialPageRoute(
+
+                      builder: (context) =>
+                          EditProfileScreen(
+
+                            userId: widget.userId,
+
+                            currentBio: bio,
+
+                            currentInterests:
+                            interests,
+
+                            currentAge: age,
+                          ),
+                    ),
+                  );
+
+                  if (result == true) {
+
+                    loadProfile();
+                  }
+                },
 
                 child: const Text(
                   "Edit Profile",
