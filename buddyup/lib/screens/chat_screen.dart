@@ -73,13 +73,56 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     try {
-      await http.post(
-        Uri.parse('http://10.0.2.2:8000/chat/api/${widget.threadId}/send/'),
+      // 1. Am scos threadId din link, ca sa se potriveasca exact cu urls.py din Django
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:8000/chat/api/send/'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'sender_id': widget.userId, 'text': text}),
+        // 2. Am adaugat thread_id in interiorul pachetului trimis
+        body: jsonEncode({
+          'sender_id': widget.userId,
+          'text': text,
+          'thread_id': widget.threadId,
+        }),
       );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint("✅ Mesaj salvat cu succes in baza de date!");
+      } else {
+        debugPrint("❌ Eroare la salvare. Cod: ${response.statusCode}. Motiv: ${response.body}");
+      }
     } catch (e) {
-      debugPrint("Eroare trimitere: $e");
+      debugPrint("❌ Eroare de retea: $e");
+    }
+  }
+  // Funcția care apelează Agentul 2 (AI Icebreaker)
+  Future<void> generateIcebreaker() async {
+    // Putem goli textul sau pune un mesaj temporar pana vine raspunsul
+    _messageController.text = "Se gândește AI-ul..."; 
+
+    try {
+      final url = Uri.parse('http://10.0.2.2:8000/chat/api/icebreaker/');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': widget.userId,
+          'target_user': widget.otherUserName,
+          'thread_id': widget.threadId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _messageController.text = data['suggestion'] ?? "";
+        });
+      } else {
+        _messageController.clear();
+        debugPrint("Eroare AI: ${response.statusCode}");
+      }
+    } catch (e) {
+      _messageController.clear();
+      debugPrint("Eroare retea AI: $e");
     }
   }
 
@@ -127,6 +170,11 @@ class _ChatScreenState extends State<ChatScreen> {
             color: const Color(0xFF1E293B),
             child: Row(
               children: [
+                // BUTONUL NOU PENTRU AI ✨
+                IconButton(
+                  icon: const Icon(Icons.auto_awesome, color: Colors.amberAccent),
+                  onPressed: generateIcebreaker,
+                ),
                 Expanded(
                   child: TextField(
                     controller: _messageController,

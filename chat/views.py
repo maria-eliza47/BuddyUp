@@ -78,3 +78,27 @@ def get_messages(request, thread_id):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Folosește GET"}, status=405)
+@csrf_exempt
+def generate_icebreaker(request):
+    if request.method == 'POST':
+        try:
+            # Citim datele trimise de Flutter (ID-ul tau, numele lui, etc.)
+            data = json.loads(request.body)
+            user_id = data.get('user_id')
+            target_user = data.get('target_user')
+            
+            # ---------------------------------------------------------
+            # AICI VA VENI CODUL TAU PENTRU LLAMA 3 IN VIITOR
+            # Ex: suggestion = llama_agent.generate(user_id, target_user, location="Ploiesti")
+            # ---------------------------------------------------------
+            
+            # Pentru testarea interfetei, generam un raspuns "fals" temporar:
+            mesaj_generat = f"Hei! Amândoi suntem din Ploiești. Ce-ar fi să spargem gheața cu o cafea prin centru la final de săptămână?"
+            
+            # Il trimitem inapoi catre Flutter exact in formatul asteptat
+            return JsonResponse({'suggestion': mesaj_generat}, status=200)
+            
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+            
+    return JsonResponse({'error': 'Invalid request'}, status=405)

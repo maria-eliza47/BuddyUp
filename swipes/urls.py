@@ -6,4 +6,5 @@ urlpatterns = [
     path('api/inregistreaza/<int:swiped_user_id>/<str:tip_actiune>/', views.inregistreaza_swipe, name='inregistreaza_swipe'),
     path('api/update-location/', views.actualizeaza_locatia, name='actualizeaza_locatia'),
     path('api/sugestii-interese/', views.get_sugestii_interese, name='sugestii_interese'),
+    path('api/ai-picks/', views.get_ai_top_picks, name='ai_picks'),
 ]
