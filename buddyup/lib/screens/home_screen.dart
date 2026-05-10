@@ -4,8 +4,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'profile_screen.dart';
-
-import 'profile_screen.dart';
 import 'matches_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -14,14 +12,9 @@ class HomeScreen extends StatefulWidget {
   final int userId;
 
   const HomeScreen({
-
-    
     super.key,
-   
     required this.username,
-   
     required this.userId,
-  ,
   });
 
   @override
@@ -54,10 +47,7 @@ class _HomeScreenState
     setState(() => isLoading = true);
 
     final url = Uri.parse(
-
-      
       'http://10.0.2.2:8000/swipes/api/utilizatori/?user_id=${widget.userId}',
-    ,
     );
 
 
@@ -101,16 +91,10 @@ class _HomeScreenState
   }
 
   Future<bool> _onSwipe(
-
-      
       int previousIndex,
-     
       int? currentIndex,
-     
       CardSwiperDirection direction,
-
-      ,
-      ) async {
+  ) async {
 
     if (previousIndex >= profiles.length) {
 
@@ -132,10 +116,7 @@ class _HomeScreenState
     swipedProfile['id'];
 
     final url = Uri.parse(
-
-      
       'http://10.0.2.2:8000/swipes/api/inregistreaza/$swipedId/$swipeType/?from_user=${widget.userId}',
-    ,
     );
 
     try {
@@ -189,17 +170,11 @@ class _HomeScreenState
       appBar: AppBar(
 
         title: const Text(
-
-          
           "BuddyUp",
-
-         
           style: TextStyle(
-
             fontWeight: FontWeight.bold,
             color: Colors.cyanAccent,
-          ,
-        ),
+          ),
         ),
 
         backgroundColor:
@@ -226,10 +201,8 @@ class _HomeScreenState
               
               builder: (context) =>
                   MatchesScreen(
-
                     userId: widget.userId,
                   ),
-            ,
             ),
           ),
         ),
@@ -499,12 +472,9 @@ class _HomeScreenState
 
            
             style: TextStyle(
-
               color: Colors.white70,
-
               fontSize: 18,
             ),
-          ,
           ),
 
           const SizedBox(height: 10),
@@ -517,14 +487,11 @@ class _HomeScreenState
 
            
             child: const Text(
-
               "Reincarca",
-
               style: TextStyle(
                 color: Colors.cyanAccent,
               ),
             ),
-          ,
           ),
         ],
       ),
