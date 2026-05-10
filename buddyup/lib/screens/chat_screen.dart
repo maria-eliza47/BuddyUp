@@ -94,6 +94,37 @@ class _ChatScreenState extends State<ChatScreen> {
       debugPrint("❌ Eroare de retea: $e");
     }
   }
+  // Funcția care apelează Agentul 2 (AI Icebreaker)
+  Future<void> generateIcebreaker() async {
+    // Putem goli textul sau pune un mesaj temporar pana vine raspunsul
+    _messageController.text = "Se gândește AI-ul..."; 
+
+    try {
+      final url = Uri.parse('http://10.0.2.2:8000/chat/api/icebreaker/');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': widget.userId,
+          'target_user': widget.otherUserName,
+          'thread_id': widget.threadId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _messageController.text = data['suggestion'] ?? "";
+        });
+      } else {
+        _messageController.clear();
+        debugPrint("Eroare AI: ${response.statusCode}");
+      }
+    } catch (e) {
+      _messageController.clear();
+      debugPrint("Eroare retea AI: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -139,6 +170,11 @@ class _ChatScreenState extends State<ChatScreen> {
             color: const Color(0xFF1E293B),
             child: Row(
               children: [
+                // BUTONUL NOU PENTRU AI ✨
+                IconButton(
+                  icon: const Icon(Icons.auto_awesome, color: Colors.amberAccent),
+                  onPressed: generateIcebreaker,
+                ),
                 Expanded(
                   child: TextField(
                     controller: _messageController,

@@ -158,6 +158,88 @@ class _HomeScreenState
       return false;
     }
   }
+  // Funcția care deschide sertarul cu recomandările AI
+  void _showAIPicks() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) {
+        return FutureBuilder(
+          // Apelăm endpoint-ul nou creat în Django
+          future: http.get(Uri.parse('http://10.0.2.2:8000/swipes/api/ai-picks/?user_id=${widget.userId}')),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 200, 
+                child: Center(child: CircularProgressIndicator(color: Colors.amberAccent))
+              );
+            }
+            if (!snapshot.hasData || snapshot.hasError) {
+              return const SizedBox(
+                height: 200, 
+                child: Center(child: Text("Eroare la conectarea cu AI-ul.", style: TextStyle(color: Colors.white)))
+              );
+            }
+
+            final List picks = jsonDecode((snapshot.data as http.Response).body);
+            if (picks.isEmpty) {
+              return const SizedBox(
+                height: 200, 
+                child: Center(child: Text("AI-ul nu a găsit nicio recomandare azi.", style: TextStyle(color: Colors.white)))
+              );
+            }
+
+            final pick = picks[0]; // Luăm prima recomandare
+
+            return Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.auto_awesome, color: Colors.amberAccent, size: 28),
+                      SizedBox(width: 10),
+                      Text("Top Pick by AI", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(height: 25),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const CircleAvatar(
+                      radius: 25,
+                      backgroundColor: Colors.amberAccent, 
+                      child: Icon(Icons.person, color: Color(0xFF0F172A))
+                    ),
+                    title: Text("${pick['username']}, ${pick['age']}", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    subtitle: Text(pick['interests'] ?? "", style: const TextStyle(color: Colors.cyanAccent)),
+                  ),
+                  const SizedBox(height: 15),
+                  Container(
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A), 
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      pick['ai_reason'], 
+                      style: const TextStyle(color: Colors.amberAccent, fontSize: 15, height: 1.4, fontStyle: FontStyle.italic),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                ],
+              ),
+            );
+          }
+        );
+      }
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -166,7 +248,12 @@ class _HomeScreenState
 
       backgroundColor:
       const Color(0xFF0F172A),
-
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAIPicks,
+        backgroundColor: Colors.amberAccent,
+        icon: const Icon(Icons.auto_awesome, color: Color(0xFF0F172A)),
+        label: const Text("AI Picks", style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold)),
+      ),
       appBar: AppBar(
 
         title: const Text(

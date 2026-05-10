@@ -158,3 +158,48 @@ def get_sugestii_interese(request):
 def actualizeaza_locatia(request):
     """Endpoint pentru update GPS (placeholder)."""
     return JsonResponse({'status': 'ok'})
+from django.http import JsonResponse
+from profiles.models import Profile  # Asigură-te că importul modelului e corect
+import random
+
+def get_ai_top_picks(request):
+    user_id = request.GET.get('user_id')
+    
+    try:
+        # 1. Luăm profilul tău ca să știm ce interese ai
+        my_profile = Profile.objects.get(user_id=user_id)
+        my_interests = my_profile.interests.lower() if my_profile.interests else ""
+
+        # 2. Luăm toți ceilalți utilizatori (excluzându-te pe tine)
+        other_profiles = Profile.objects.exclude(user_id=user_id)
+
+        # 3. Logică simplă de Matchmaking: căutăm pe cineva cu interese similare
+        best_match = None
+        for p in other_profiles:
+            if p.interests:
+                # Verificăm dacă există cuvinte comune în interese
+                common_interests = set(my_interests.split(',')) & set(p.interests.lower().split(','))
+                if common_interests:
+                    best_match = p
+                    break
+        
+        # Dacă nu am găsit prin interese, luăm pe cineva la întâmplare ca să nu rămână gol
+        if not best_match and other_profiles.exists():
+            best_match = random.choice(other_profiles)
+
+        if best_match:
+            # Construim răspunsul cu date reale din DB
+            recommendation = [{
+                "id": best_match.user.id,
+                "username": best_match.user.username,
+                "age": best_match.age,
+                "interests": best_match.interests,
+                # Aici simulăm ce ar zice Llama3 bazat pe datele reale
+                "ai_reason": f"✨ Recomandare specială! Am observat că amândoi sunteți interesați de '{best_match.interests}'. Bazat pe profilul tău, cred că ați avea multe de discutat!"
+            }]
+            return JsonResponse(recommendation, safe=False)
+        else:
+            return JsonResponse([], safe=False)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
