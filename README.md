@@ -1,6 +1,6 @@
 # BuddyUp! - Social Matching Application
 
-[cite_start]BuddyUp este o aplicație mobilă de tip social matching, dezvoltată folosind tehnologiile Flutter și Django REST Framework[cite: 7]. [cite_start]Scopul aplicației este de a facilita interacțiunea dintre utilizatori prin intermediul unui sistem de profiluri, swipe-uri și match-uri[cite: 8].
+BuddyUp este o aplicație mobilă de tip social matching, dezvoltată folosind tehnologiile Flutter și Django REST Framework. Scopul aplicației este de a facilita interacțiunea dintre utilizatori prin intermediul unui sistem de profiluri, swipe-uri și match-uri.
 
 ## Prezentare Vizuală (Screenshots)
 
