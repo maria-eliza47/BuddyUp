@@ -283,6 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   username: widget.username,
                   description: "",
                   userId: widget.userId,
+                  otherUserId: widget.userId,
                 ),
               ),
             ),

@@ -10,6 +10,7 @@ class ProfileScreen extends StatefulWidget {
   final String username;
   final String description;
   final int userId;
+  final int otherUserId;
 
   const ProfileScreen({
 
@@ -18,6 +19,7 @@ class ProfileScreen extends StatefulWidget {
     required this.username,
     required this.description,
     required this.userId,
+    required this.otherUserId,
   });
 
   @override
@@ -36,6 +38,8 @@ class _ProfileScreenState
   String? profilePictureUrl;
 
   List<String> galleryImages = [];
+
+  final TextEditingController _reportController = TextEditingController();
 
   bool isLoading = true;
 
@@ -121,12 +125,76 @@ class _ProfileScreenState
     }
   }
 
+  Future<void> _blockUser() async {
+    final url = Uri.parse('http://10.0.2.2:8000/reports/api/block_user/');
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_id': widget.userId,
+        'other_user_id': widget.otherUserId,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Utilizator blocat cu succes!'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Eroare la blocare: ${response.statusCode}'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _reportUser(String reason) async {
+    final url = Uri.parse('http://10.0.2.2:8000/reports/api/report_user/');
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'reason': reason,
+        'user_id': widget.userId,
+        'other_user_id': widget.otherUserId,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Raport trimis cu succes!'),
+        ),
+      );
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Eroare la raportare: ${response.statusCode}'),
+        ),
+      );
+    }
+  }
+
   @override
   void initState() {
 
     super.initState();
 
     loadProfile();
+  }
+
+  @override
+  void dispose() {
+    _reportController.dispose();
+    super.dispose();
   }
 
   @override
@@ -145,6 +213,92 @@ class _ProfileScreenState
 
         backgroundColor:
         const Color(0xFF0F172A),
+
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(
+              Icons.more_vert,
+              color: Colors.white,
+            ),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'block',
+                child: Text(
+                  'Block User',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'report',
+                child: Text(
+                  'Report User',
+                  style: TextStyle(color: Colors.orange),
+                ),
+              ),
+            ],
+            onSelected: (value) async {
+              if (value == 'block') {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Block User'),
+                    content: const Text(
+                      'Ești sigur că vrei să blochezi acest utilizator? Nu veți mai putea comunica.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Anulează'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text(
+                          'Block',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirmed == true) {
+                  await _blockUser();
+                }
+              } else if (value == 'report') {
+                _reportController.clear();
+
+                await showDialog<void>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Report User'),
+                    content: TextField(
+                      controller: _reportController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        hintText: 'Introduce motivul raportării',
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Anulează'),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          await _reportUser(_reportController.text.trim());
+                        },
+                        child: const Text(
+                          'Report',
+                          style: TextStyle(color: Colors.orange),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+          ),
+        ],
       ),
 
       body: isLoading
