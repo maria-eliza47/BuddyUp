@@ -142,8 +142,24 @@ class _HomeScreenState extends State<HomeScreen> {
                               style: TextStyle(color: Colors.white))));
                 }
 
-                final List picks =
-                    jsonDecode((snapshot.data as http.Response).body);
+              final response = snapshot.data as http.Response;
+              final decodedData = jsonDecode(response.body);
+
+              // Verificăm dacă serverul ne-a trimis o eroare (un Map) în loc de o listă
+              if (decodedData is Map) {
+                return SizedBox(
+                  height: 200, 
+                  child: Center(
+                    child: Text(
+                      "Eroare Server: ${decodedData['error']}", 
+                      style: const TextStyle(color: Colors.redAccent)
+                    )
+                  )
+                );
+              }
+
+              // Dacă totul e ok, transformăm datele în listă
+              final List picks = decodedData;
                 if (picks.isEmpty) {
                   return const SizedBox(
                       height: 200,
