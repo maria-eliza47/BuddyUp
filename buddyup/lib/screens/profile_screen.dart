@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'welcome_screen.dart';
 
 import 'edit_profile_screen.dart';
 
@@ -603,14 +605,36 @@ class _ProfileScreenState
                   Colors.redAccent,
                 ),
 
-                onPressed: () {
+                onPressed: () async {
 
-                  Navigator.popUntil(
+                  final prefs =
+                  await SharedPreferences.getInstance();
+
+                  await prefs.remove(
+                    'isLoggedIn',
+                  );
+
+                  await prefs.remove(
+                    'username',
+                  );
+
+                  await prefs.remove(
+                    'userId',
+                  );
+
+                  if (!context.mounted) return;
+
+                  Navigator.pushAndRemoveUntil(
 
                     context,
 
-                        (route) =>
-                    route.isFirst,
+                    MaterialPageRoute(
+
+                      builder: (context) =>
+                      const WelcomeScreen(),
+                    ),
+
+                        (route) => false,
                   );
                 },
 
