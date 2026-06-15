@@ -591,64 +591,6 @@ class _ProfileScreenState
               height: 20,
             ),
 
-            SizedBox(
-
-              width: double.infinity,
-              height: 55,
-
-              child: ElevatedButton(
-
-                style:
-                ElevatedButton.styleFrom(
-
-                  backgroundColor:
-                  Colors.redAccent,
-                ),
-
-                onPressed: () async {
-
-                  final prefs =
-                  await SharedPreferences.getInstance();
-
-                  await prefs.remove(
-                    'isLoggedIn',
-                  );
-
-                  await prefs.remove(
-                    'username',
-                  );
-
-                  await prefs.remove(
-                    'userId',
-                  );
-
-                  if (!context.mounted) return;
-
-                  Navigator.pushAndRemoveUntil(
-
-                    context,
-
-                    MaterialPageRoute(
-
-                      builder: (context) =>
-                      const WelcomeScreen(),
-                    ),
-
-                        (route) => false,
-                  );
-                },
-
-                child: const Text(
-
-                  "Logout",
-
-                  style: TextStyle(
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-
             const SizedBox(
               height: 40,
             ),
@@ -826,6 +768,70 @@ class _ProfileScreenState
                     ),
                   );
                 },
+              ),
+              const SizedBox(
+                height: 30,
+              ),
+
+              SizedBox(
+
+                width: double.infinity,
+                height: 55,
+
+                child: ElevatedButton(
+
+                  style:
+                  ElevatedButton.styleFrom(
+
+                    backgroundColor:
+                    Colors.redAccent,
+                  ),
+
+                  onPressed: () async {
+
+                    final prefs =
+                    await SharedPreferences.getInstance();
+
+                    await prefs.remove(
+                      'isLoggedIn',
+                    );
+
+                    await prefs.remove(
+                      'username',
+                    );
+
+                    await prefs.remove(
+                      'userId',
+                    );
+
+                    if (!context.mounted) return;
+
+                    Navigator.pushAndRemoveUntil(
+
+                      context,
+
+                      MaterialPageRoute(
+
+                        builder: (context) =>
+                        const WelcomeScreen(),
+                      ),
+
+                          (route) => false,
+                    );
+                  },
+
+                  child: const Text(
+
+                    "Logout",
+
+                    style: TextStyle(
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(
+                height: 20,
               ),
             ],
           ),
