@@ -1,7 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'welcome_screen.dart';
 
 import 'edit_profile_screen.dart';
 
@@ -10,6 +14,7 @@ class ProfileScreen extends StatefulWidget {
   final String username;
   final String description;
   final int userId;
+  final int otherUserId;
 
   const ProfileScreen({
 
@@ -18,6 +23,7 @@ class ProfileScreen extends StatefulWidget {
     required this.username,
     required this.description,
     required this.userId,
+    required this.otherUserId,
   });
 
   @override
@@ -35,7 +41,9 @@ class _ProfileScreenState
 
   String? profilePictureUrl;
 
-  List<String> galleryImages = [];
+  List<dynamic> galleryImages = [];
+
+  final TextEditingController _reportController = TextEditingController();
 
   bool isLoading = true;
 
@@ -79,18 +87,7 @@ class _ProfileScreenState
           profilePictureUrl =
           data['profile_picture'];
 
-          galleryImages =
-          List<String>.from(
-
-            galleryData.map(
-
-                  (image) => image['image']
-                  .replaceAll(
-                '127.0.0.1',
-                '10.0.2.2',
-              ),
-            ),
-          );
+          galleryImages = galleryData;
 
           isLoading = false;
         });
@@ -121,12 +118,170 @@ class _ProfileScreenState
     }
   }
 
+  Future<void> pickAndUploadGalleryImage() async {
+
+    if (galleryImages.length >= 6) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+
+        const SnackBar(
+
+          content: Text(
+            "Maximum 6 images allowed",
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    final picker = ImagePicker();
+
+    final XFile? image = await picker.pickImage(
+
+      source: ImageSource.gallery,
+    );
+
+    if (image == null) return;
+
+    final request = http.MultipartRequest(
+
+      'POST',
+
+      Uri.parse(
+        'http://10.0.2.2:8000/profiles/upload-gallery/${widget.userId}/',
+      ),
+    );
+
+    request.files.add(
+
+      await http.MultipartFile.fromPath(
+
+        'image',
+
+        image.path,
+      ),
+    );
+
+    final response = await request.send();
+
+    if (response.statusCode == 200) {
+
+      loadProfile();
+
+    } else {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+
+        const SnackBar(
+
+          content: Text(
+            "Failed to upload image",
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> deleteGalleryImage(
+      int imageId,
+      ) async {
+
+    final response = await http.delete(
+
+      Uri.parse(
+        'http://10.0.2.2:8000/profiles/delete-gallery/$imageId/',
+      ),
+    );
+
+    if (response.statusCode == 200) {
+
+      loadProfile();
+
+    } else {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+
+        const SnackBar(
+
+          content: Text(
+            "Failed to delete image",
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _blockUser() async {
+    final url = Uri.parse('http://10.0.2.2:8000/reports/api/block_user/');
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_id': widget.userId,
+        'other_user_id': widget.otherUserId,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Utilizator blocat cu succes!'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Eroare la blocare: ${response.statusCode}'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _reportUser(String reason) async {
+    final url = Uri.parse('http://10.0.2.2:8000/reports/api/report_user/');
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'reason': reason,
+        'user_id': widget.userId,
+        'other_user_id': widget.otherUserId,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Raport trimis cu succes!'),
+        ),
+      );
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Eroare la raportare: ${response.statusCode}'),
+        ),
+      );
+    }
+  }
+
   @override
   void initState() {
 
     super.initState();
 
     loadProfile();
+  }
+
+  @override
+  void dispose() {
+    _reportController.dispose();
+    super.dispose();
   }
 
   @override
@@ -145,6 +300,92 @@ class _ProfileScreenState
 
         backgroundColor:
         const Color(0xFF0F172A),
+
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(
+              Icons.more_vert,
+              color: Colors.white,
+            ),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'block',
+                child: Text(
+                  'Block User',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'report',
+                child: Text(
+                  'Report User',
+                  style: TextStyle(color: Colors.orange),
+                ),
+              ),
+            ],
+            onSelected: (value) async {
+              if (value == 'block') {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Block User'),
+                    content: const Text(
+                      'Ești sigur că vrei să blochezi acest utilizator? Nu veți mai putea comunica.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Anulează'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text(
+                          'Block',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirmed == true) {
+                  await _blockUser();
+                }
+              } else if (value == 'report') {
+                _reportController.clear();
+
+                await showDialog<void>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Report User'),
+                    content: TextField(
+                      controller: _reportController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        hintText: 'Introduce motivul raportării',
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Anulează'),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          await _reportUser(_reportController.text.trim());
+                        },
+                        child: const Text(
+                          'Report',
+                          style: TextStyle(color: Colors.orange),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+          ),
+        ],
       ),
 
       body: isLoading
@@ -159,9 +400,11 @@ class _ProfileScreenState
         padding:
         const EdgeInsets.all(24),
 
-        child: Column(
+        child: SingleChildScrollView(
 
-          children: [
+          child: Column(
+
+            children: [
 
             const SizedBox(
               height: 40,
@@ -348,42 +591,6 @@ class _ProfileScreenState
               height: 20,
             ),
 
-            SizedBox(
-
-              width: double.infinity,
-              height: 55,
-
-              child: ElevatedButton(
-
-                style:
-                ElevatedButton.styleFrom(
-
-                  backgroundColor:
-                  Colors.redAccent,
-                ),
-
-                onPressed: () {
-
-                  Navigator.popUntil(
-
-                    context,
-
-                        (route) =>
-                    route.isFirst,
-                  );
-                },
-
-                child: const Text(
-
-                  "Logout",
-
-                  style: TextStyle(
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-
             const SizedBox(
               height: 40,
             ),
@@ -413,12 +620,20 @@ class _ProfileScreenState
               height: 20,
             ),
 
-            Expanded(
+            GridView.builder(
 
-              child: GridView.builder(
+              shrinkWrap: true,
+
+              physics:
+              const NeverScrollableScrollPhysics(),
 
                 itemCount:
-                galleryImages.length,
+
+                galleryImages.length < 6
+
+                    ? galleryImages.length + 1
+
+                    : galleryImages.length,
 
                 gridDelegate:
 
@@ -431,27 +646,195 @@ class _ProfileScreenState
                   mainAxisSpacing: 10,
                 ),
 
-                itemBuilder:
-                    (context, index) {
+                itemBuilder: (context, index) {
 
-                  return ClipRRect(
+                  if (index == 0 && galleryImages.length < 6) {
 
-                    borderRadius:
-                    BorderRadius.circular(
-                      15,
-                    ),
+                    return GestureDetector(
 
-                    child: Image.network(
+                      onTap: pickAndUploadGalleryImage,
 
-                      galleryImages[index],
+                      child: Container(
 
-                      fit: BoxFit.cover,
+                        decoration: BoxDecoration(
+
+                          color: Colors.white10,
+
+                          borderRadius:
+                          BorderRadius.circular(15),
+
+                          border: Border.all(
+                            color: Colors.white30,
+                          ),
+                        ),
+
+                        child: const Center(
+
+                          child: Icon(
+
+                            Icons.add,
+
+                            size: 50,
+
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  final imageIndex =
+
+                  galleryImages.length < 6
+
+                      ? index - 1
+
+                      : index;
+
+                  return GestureDetector(
+
+                    onLongPress: () async {
+
+                      final confirmed =
+                      await showDialog<bool>(
+
+                        context: context,
+
+                        builder: (context) =>
+                            AlertDialog(
+
+                              title: const Text(
+                                "Delete image",
+                              ),
+
+                              content: const Text(
+                                "Are you sure?",
+                              ),
+
+                              actions: [
+
+                                TextButton(
+
+                                  onPressed: () =>
+                                      Navigator.pop(
+                                        context,
+                                        false,
+                                      ),
+
+                                  child: const Text(
+                                    "Cancel",
+                                  ),
+                                ),
+
+                                TextButton(
+
+                                  onPressed: () =>
+                                      Navigator.pop(
+                                        context,
+                                        true,
+                                      ),
+
+                                  child: const Text(
+                                    "Delete",
+                                  ),
+                                ),
+                              ],
+                            ),
+                      );
+
+                      if (confirmed == true) {
+
+                        await deleteGalleryImage(
+
+                          galleryImages[imageIndex]['id'],
+                        );
+                      }
+                    },
+
+                    child: ClipRRect(
+
+                      borderRadius:
+                      BorderRadius.circular(15),
+
+                      child: Image.network(
+
+                        galleryImages[imageIndex]['image']
+                            .replaceAll(
+                          '127.0.0.1',
+                          '10.0.2.2',
+                        ),
+
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   );
                 },
               ),
-            ),
-          ],
+              const SizedBox(
+                height: 30,
+              ),
+
+              SizedBox(
+
+                width: double.infinity,
+                height: 55,
+
+                child: ElevatedButton(
+
+                  style:
+                  ElevatedButton.styleFrom(
+
+                    backgroundColor:
+                    Colors.redAccent,
+                  ),
+
+                  onPressed: () async {
+
+                    final prefs =
+                    await SharedPreferences.getInstance();
+
+                    await prefs.remove(
+                      'isLoggedIn',
+                    );
+
+                    await prefs.remove(
+                      'username',
+                    );
+
+                    await prefs.remove(
+                      'userId',
+                    );
+
+                    if (!context.mounted) return;
+
+                    Navigator.pushAndRemoveUntil(
+
+                      context,
+
+                      MaterialPageRoute(
+
+                        builder: (context) =>
+                        const WelcomeScreen(),
+                      ),
+
+                          (route) => false,
+                    );
+                  },
+
+                  child: const Text(
+
+                    "Logout",
+
+                    style: TextStyle(
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(
+                height: 20,
+              ),
+            ],
+          ),
         ),
       ),
     );

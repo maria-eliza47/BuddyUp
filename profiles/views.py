@@ -184,8 +184,18 @@ def upload_gallery_image_view(request, user_id):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    ProfileImage.objects.create(
+    if ProfileImage.objects.filter(
+        profile=profile
+    ).count() >= 6:
 
+        return Response(
+            {
+                'error': 'Maximum 6 images allowed'
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    ProfileImage.objects.create(
         profile=profile,
         image=request.FILES['image']
     )
@@ -195,7 +205,6 @@ def upload_gallery_image_view(request, user_id):
             'message': 'Gallery image uploaded'
         }
     )
-
 
 @api_view(['GET'])
 def gallery_images_view(request, user_id):
@@ -233,3 +242,31 @@ def gallery_images_view(request, user_id):
         })
 
     return Response(data)
+
+@api_view(['DELETE'])
+def delete_gallery_image_view(request, image_id):
+
+    try:
+
+        image = ProfileImage.objects.get(
+            id=image_id
+        )
+
+    except ProfileImage.DoesNotExist:
+
+        return Response(
+            {
+                'error': 'Image not found'
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    image.image.delete()
+
+    image.delete()
+
+    return Response(
+        {
+            'message': 'Image deleted successfully'
+        }
+    )
