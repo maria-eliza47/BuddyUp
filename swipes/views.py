@@ -7,6 +7,7 @@ from .models import Swipe
 from matches.models import Match
 from geopy.distance import geodesic
 import json
+import requests
 import unicodedata
 from django.views.decorators.csrf import csrf_exempt
 from profiles.models import Profile
@@ -166,40 +167,67 @@ def get_ai_top_picks(request):
     user_id = request.GET.get('user_id')
     
     try:
-        # 1. Luăm profilul tău ca să știm ce interese ai
         my_profile = Profile.objects.get(user_id=user_id)
-        my_interests = my_profile.interests.lower() if my_profile.interests else ""
+        my_interests = my_profile.interests if my_profile.interests else ""
+        my_bio = my_profile.bio if my_profile.bio else ""
 
-        # 2. Luăm toți ceilalți utilizatori (excluzându-te pe tine)
         other_profiles = Profile.objects.exclude(user_id=user_id)
+        
+        if not other_profiles.exists():
+            return JsonResponse([], safe=False)
 
-        # 3. Logică simplă de Matchmaking: căutăm pe cineva cu interese similare
         best_match = None
         for p in other_profiles:
-            if p.interests:
-                # Verificăm dacă există cuvinte comune în interese
-                common_interests = set(my_interests.split(',')) & set(p.interests.lower().split(','))
-                if common_interests:
+            if p.interests and my_interests:
+                common = set(my_interests.lower().split(',')) & set(p.interests.lower().split(','))
+                if common:
                     best_match = p
                     break
-        
-        # Dacă nu am găsit prin interese, luăm pe cineva la întâmplare ca să nu rămână gol
-        if not best_match and other_profiles.exists():
+                    
+        if not best_match:
             best_match = random.choice(other_profiles)
 
-        if best_match:
-            # Construim răspunsul cu date reale din DB
-            recommendation = [{
-                "id": best_match.user.id,
-                "username": best_match.user.username,
-                "age": best_match.age,
-                "interests": best_match.interests,
-                # Aici simulăm ce ar zice Llama3 bazat pe datele reale
-                "ai_reason": f"✨ Recomandare specială! Am observat că amândoi sunteți interesați de '{best_match.interests}'. Bazat pe profilul tău, cred că ați avea multe de discutat!"
-            }]
-            return JsonResponse(recommendation, safe=False)
-        else:
-            return JsonResponse([], safe=False)
+        interese_afisate = best_match.interests if best_match.interests else "Diverse pasiuni"
+
+        # Prompt special pentru Llama 3 - generare de recomandări calitative
+        prompt = (
+            f"Ești expertul în matchmaking AI al aplicației BuddyUp- folosita pentru a lega prietenii."
+            f"Analizează aceste două profiluri și generează o justificare scurtă și convingătoare în limba română (maxim 2 propoziții) "
+            f"despre de ce acești doi utilizatori sunt o potrivire excelentă.\n"
+            f"Utilizatorul 1: Interese: {my_interests}, Bio: {my_bio}\n"
+            f"Utilizatorul 2: Username: {best_match.user.username}, Interese: {best_match.interests}, Bio: {best_match.bio}\n"
+            f"Începe textul direct cu un emoji steluță (✨) și nu folosi introduceri plictisitoare. Justificarea trebuie să fie adresată direct primului utilizator."
+        )
+
+        # --- Conexiunea cu OLLAMA LOCAL ---
+        ollama_url = "http://localhost:11434/api/generate"
+        payload = {
+            "model": "llama3",
+            "prompt": prompt,
+            "stream": False
+        }
+        
+        try:
+            # Apelăm AI-ul cu limită de 2 minute
+            response = requests.post(ollama_url, json=payload, timeout=120)
+            if response.status_code == 200:
+                result = response.json()
+                ai_reason = result.get('response', '').strip()
+            else:
+                ai_reason = f"✨ Recomandare specială! Analiza AI indică compatibilitate ridicată pe baza interesului pentru: {interese_afisate}."
+        except Exception as e:
+            print(f"❌ Eroare AI Local (Matchmaker): {e}")
+            ai_reason = f"✨ Recomandare specială! Potrivire ridicată pe baza profilurilor voastre din baza de date."
+
+        recommendation = [{
+            "id": best_match.user.id,
+            "username": best_match.user.username,
+            "age": best_match.age or 20,
+            "interests": interese_afisate,
+            "ai_reason": ai_reason
+        }]
+        
+        return JsonResponse(recommendation, safe=False)
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
