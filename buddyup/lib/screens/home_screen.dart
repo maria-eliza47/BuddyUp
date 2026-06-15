@@ -23,6 +23,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<dynamic> profiles = [];
   bool isLoading = true;
+  final Map<int, int> currentImageIndex = {};
 
   final CardSwiperController controller = CardSwiperController();
 
@@ -47,6 +48,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (response.statusCode == 200) {
         setState(() {
           profiles = jsonDecode(response.body);
+          for (int i = 0; i < profiles.length; i++) {
+            currentImageIndex[i] = 0;
+          }
         });
       } else {
         debugPrint("Eroare Server: ${response.statusCode}");
@@ -314,7 +318,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           v,
                         ) =>
                             _buildProfileCard(
-                          profiles[index],
+                              profiles[index],
+                              index,
                         ),
                       ),
                     ),
@@ -327,7 +332,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildProfileCard(dynamic profile) {
+  Widget _buildProfileCard(
+      dynamic profile,
+      int cardIndex,
+      ) {
     String? imageUrl = profile['profile_picture'];
 
     if (imageUrl != null && imageUrl.contains('127.0.0.1')) {
@@ -337,6 +345,30 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+    List<String> allImages = [];
+
+    if (imageUrl != null) {
+      allImages.add(imageUrl);
+    }
+
+    if (profile['gallery_images'] != null) {
+      for (var img in profile['gallery_images']) {
+        allImages.add(
+          img.toString().replaceAll(
+            '127.0.0.1',
+            '10.0.2.2',
+          ),
+        );
+      }
+    }
+
+    if (allImages.isEmpty) {
+      allImages.add('');
+    }
+
+    final selectedImage =
+        currentImageIndex[cardIndex] ?? 0;
+
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
@@ -344,25 +376,67 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Stack(
         children: [
+
           Positioned.fill(
-            child: imageUrl != null
-                ? Image.network(
-                    imageUrl,
-                    fit: BoxFit.cover,
-                  )
-                : const Icon(
-                    Icons.person,
-                    size: 100,
-                    color: Colors.white24,
-                  ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: GestureDetector(
+                onTapDown: (details) {
+
+                  final width =
+                      MediaQuery.of(context).size.width;
+
+                  if (details.localPosition.dx >
+                      width / 2) {
+
+                    if (selectedImage <
+                        allImages.length - 1) {
+
+                      setState(() {
+
+                        currentImageIndex[cardIndex] =
+                            selectedImage + 1;
+                      });
+                    }
+
+                  } else {
+
+                    if (selectedImage > 0) {
+
+                      setState(() {
+
+                        currentImageIndex[cardIndex] =
+                            selectedImage - 1;
+                      });
+                    }
+                  }
+                },
+
+                child: allImages[selectedImage].isNotEmpty
+
+                    ? Image.network(
+                  allImages[selectedImage],
+                  fit: BoxFit.cover,
+                )
+
+                    : const Icon(
+                  Icons.person,
+                  size: 100,
+                  color: Colors.white24,
+                ),
+              ),
+            ),
           ),
+
           Positioned(
             bottom: 20,
             left: 20,
             right: 20,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+              CrossAxisAlignment.start,
               children: [
+
                 Text(
                   "${profile['username']}, ${profile['age']}",
                   style: const TextStyle(
@@ -371,11 +445,42 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+
                 Text(
                   profile['interests'] ?? "",
                   style: const TextStyle(
                     color: Colors.cyanAccent,
                     fontSize: 16,
+                  ),
+                ),
+
+                const SizedBox(
+                  height: 10,
+                ),
+
+                Row(
+                  mainAxisAlignment:
+                  MainAxisAlignment.center,
+
+                  children: List.generate(
+                    allImages.length,
+                        (index) => Container(
+                      margin:
+                      const EdgeInsets.symmetric(
+                        horizontal: 3,
+                      ),
+
+                      width: 8,
+                      height: 8,
+
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+
+                        color: index == selectedImage
+                            ? Colors.cyanAccent
+                            : Colors.white38,
+                      ),
+                    ),
                   ),
                 ),
               ],
