@@ -7,6 +7,7 @@ from .models import Swipe
 from matches.models import Match
 from geopy.distance import geodesic
 import json
+import requests
 import unicodedata
 from django.views.decorators.csrf import csrf_exempt
 from profiles.models import Profile
@@ -14,285 +15,219 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.db.models import Q
 
-
 # ==========================================
-# UTILITARE
+# UTILITARE (Normalizare si Curatare)
 # ==========================================
-
 def normalizeaza_text(text):
-
+    """Elimina diacriticele si transforma in litere mici."""
     if not text:
         return ""
-
     text = text.lower()
-
-    text = ''.join(
-
-        c for c in unicodedata.normalize('NFD', text)
-
-        if unicodedata.category(c) != 'Mn'
-    )
-
+    text = ''.join(c for c in unicodedata.normalize('NFD', text)
+                   if unicodedata.category(c) != 'Mn')
     return text.strip()
 
-
 # ==========================================
-# 1. LOGICA SWIPE + MATCH
+# 1. LOGICA DE SWIPE SI MATCH
 # ==========================================
-
 @csrf_exempt
 @api_view(['POST'])
-def inregistreaza_swipe(
-    request,
-    swiped_user_id,
-    tip_actiune
-):
+def inregistreaza_swipe(request, swiped_user_id, tip_actiune):
+    """
+    Inregistreaza un swipe. Daca ambii dau LIKE (RIGHT), se creeaza un Match.
+    """
+    from_user_id = request.GET.get('from_user')
 
-    from_user_id = request.GET.get(
-        'from_user'
-    )
-
+    # Identificare Swiper (cel care trimite swipe-ul)
     swiper = None
-
     if request.user.is_authenticated:
-
         swiper = request.user
-
-    elif (
-        from_user_id and
-        from_user_id != 'null'
-    ):
-
-        swiper = User.objects.filter(
-            id=from_user_id
-        ).first()
+    elif from_user_id and from_user_id != 'null':
+        swiper = User.objects.filter(id=from_user_id).first()
 
     if not swiper:
+        return JsonResponse({'error': 'Utilizator sursa neidentificat'}, status=400)
 
-        return JsonResponse(
+    swiped_user = get_object_or_404(User, id=swiped_user_id)
 
-            {
-                'error':
-                'Utilizator sursa neidentificat'
-            },
+    # Mapam actiunea din Flutter (like/dislike) -> DB (RIGHT/LEFT)
+    action = 'RIGHT' if tip_actiune.lower() == 'like' else 'LEFT'
 
-            status=400
-        )
+    # Stergem swipe-ul vechi daca exista pentru a permite re-swipe (Reset la login)
+    Swipe.objects.filter(swiper=swiper, swiped_user=swiped_user).delete()
 
-    swiped_user = get_object_or_404(
-        User,
-        id=swiped_user_id
-    )
-
-    action = (
-
-        'RIGHT'
-
-        if tip_actiune.lower() == 'like'
-
-        else 'LEFT'
-    )
-
-    Swipe.objects.filter(
-
-        swiper=swiper,
-        swiped_user=swiped_user
-
-    ).delete()
-
+    # Salvam noul swipe
     Swipe.objects.create(
-
         swiper=swiper,
         swiped_user=swiped_user,
         swipe_type=action
     )
 
     este_match = False
-
     if action == 'RIGHT':
-
+        # Verificam daca swiped_user i-a dat deja RIGHT lui swiper
         reciproc = Swipe.objects.filter(
-
             swiper=swiped_user,
             swiped_user=swiper,
             swipe_type='RIGHT'
-
         ).exists()
 
         if reciproc:
-
-            u1, u2 = (
-
-                (swiper, swiped_user)
-
-                if swiper.id < swiped_user.id
-
-                else (swiped_user, swiper)
-            )
-
-            Match.objects.get_or_create(
-
-                user1=u1,
-                user2=u2
-            )
-
+            # Cream match-ul oficial (evitam duplicatele prin sortarea ID-urilor)
+            u1, u2 = (swiper, swiped_user) if swiper.id < swiped_user.id else (swiped_user, swiper)
+            Match.objects.get_or_create(user1=u1, user2=u2)
             este_match = True
 
     return JsonResponse({
-
         'status': 'success',
-
         'is_match': este_match,
-
-        'matched_with':
-
-            swiped_user.username
-
-            if este_match
-
-            else None
+        'matched_with': swiped_user.username if este_match else None
     })
 
-
 # ==========================================
-# 2. UTILIZATORI PENTRU SWIPE
+# 2. FILTRE SI DISCOVERY (FIX PENTRU LOADING)
 # ==========================================
-
 @api_view(['GET'])
 def get_utilizatori_filtrati(request):
-
+    """
+    Returneaza lista de utilizatori pentru ecranul de Swipe.
+    """
     try:
-
-        user_id_url = request.GET.get(
-            'user_id'
-        )
-
+        user_id_url = request.GET.get('user_id')
         current_user = None
 
+        # Detectam utilizatorul curent
         if request.user.is_authenticated:
-
             current_user = request.user
+        elif user_id_url and user_id_url != 'null':
+            current_user = User.objects.filter(id=user_id_url).first()
 
-        elif (
-            user_id_url and
-            user_id_url != 'null'
-        ):
+        # Incepem cu toti utilizatorii
+        potentiali = User.objects.all().select_related('profile')
 
-            current_user = User.objects.filter(
-                id=user_id_url
-            ).first()
-
-        potentiali = User.objects.all(
-        ).select_related('profile')
-
+        # Daca stim cine e user-ul, il excludem pe el insusi
         if current_user:
+            potentiali = potentiali.exclude(id=current_user.id)
 
-            potentiali = potentiali.exclude(
-                id=current_user.id
-            )
+            # OPTIONAL: Daca vrei sa ascunzi userii carora le-ai dat deja swipe,
+            # de-comenteaza linia de mai jos:
+            # vazuti_ids = Swipe.objects.filter(swiper=current_user).values_list('swiped_user_id', flat=True)
+            # potentiali = potentiali.exclude(id__in=vazuti_ids)
 
         rezultat_final = []
-
         for p in potentiali:
-
             try:
-
+                # Daca utilizatorul nu are profil creat, il sarim pentru a evita erorile
                 if not hasattr(p, 'profile'):
-
                     continue
 
                 profil_p = p.profile
 
+                # Rezolvam URL-ul pozei de profil
                 foto_url = None
-
                 if profil_p.profile_picture:
-
-                    foto_url = request.build_absolute_uri(
-                        profil_p.profile_picture.url
-                    )
+                    foto_url = profil_p.profile_picture.url
 
                 rezultat_final.append({
-
                     'id': p.id,
-
                     'username': p.username,
-
                     'age': profil_p.age or 20,
-
-                    'bio':
-                    profil_p.bio
-                    or
-                    "Hey! Let's be buddies.",
-
-                    'interests':
-                    profil_p.interests or "",
-
-                    'profile_picture':
-                    foto_url,
+                    'bio': profil_p.bio or "Hey! Let's be buddies.",
+                    'interests': profil_p.interests or "",
+                    'profile_picture': foto_url,
                 })
-
             except Exception as e:
-
-                print(
-                    f"Eroare la procesarea profilului {p.id}: {e}"
-                )
-
+                # Daca un profil are date corupte, trecem peste el fara sa blocam lista
+                print(f"Eroare la procesarea profilului {p.id}: {e}")
                 continue
 
-        return JsonResponse(
-
-            rezultat_final,
-            safe=False
-        )
+        # Returnam lista (chiar daca e goala, cercul de loading se va opri)
+        return JsonResponse(rezultat_final, safe=False)
 
     except Exception as e:
-
-        print(
-            f"EROARE CRITICA SERVER: {e}"
-        )
-
-        return JsonResponse(
-
-            {
-                'error': str(e)
-            },
-
-            status=500
-        )
-
+        print(f"EROARE CRITICA SERVER: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 # ==========================================
-# 3. SUGESTII INTERESE
+# 3. ALTE FUNCTII
 # ==========================================
-
 def get_sugestii_interese(request):
-
-    sugestii = [
-
-        "Muzica",
-        "Sport",
-        "Filme",
-        "Gaming",
-        "Gatit",
-        "Tehnologie",
-        "Calatorii",
-        "Arta"
-    ]
-
-    return JsonResponse({
-
-        'sugestii': sugestii
-    })
-
-
-# ==========================================
-# 4. UPDATE LOCATIE
-# ==========================================
+    sugestii = ["Muzica", "Sport", "Filme", "Gaming", "Gatit", "Tehnologie", "Calatorii", "Arta"]
+    return JsonResponse({'sugestii': sugestii})
 
 @csrf_exempt
 def actualizeaza_locatia(request):
+    """Endpoint pentru update GPS (placeholder)."""
+    return JsonResponse({'status': 'ok'})
+from django.http import JsonResponse
+from profiles.models import Profile  # Asigură-te că importul modelului e corect
+import random
 
-    return JsonResponse({
+def get_ai_top_picks(request):
+    user_id = request.GET.get('user_id')
+    
+    try:
+        my_profile = Profile.objects.get(user_id=user_id)
+        my_interests = my_profile.interests if my_profile.interests else ""
+        my_bio = my_profile.bio if my_profile.bio else ""
 
-        'status': 'ok'
-    })
+        other_profiles = Profile.objects.exclude(user_id=user_id)
+        
+        if not other_profiles.exists():
+            return JsonResponse([], safe=False)
+
+        best_match = None
+        for p in other_profiles:
+            if p.interests and my_interests:
+                common = set(my_interests.lower().split(',')) & set(p.interests.lower().split(','))
+                if common:
+                    best_match = p
+                    break
+                    
+        if not best_match:
+            best_match = random.choice(other_profiles)
+
+        interese_afisate = best_match.interests if best_match.interests else "Diverse pasiuni"
+
+        # Prompt special pentru Llama 3 - generare de recomandări calitative
+        prompt = (
+            f"Ești expertul în matchmaking AI al aplicației BuddyUp- folosita pentru a lega prietenii."
+            f"Analizează aceste două profiluri și generează o justificare scurtă și convingătoare în limba română (maxim 2 propoziții) "
+            f"despre de ce acești doi utilizatori sunt o potrivire excelentă.\n"
+            f"Utilizatorul 1: Interese: {my_interests}, Bio: {my_bio}\n"
+            f"Utilizatorul 2: Username: {best_match.user.username}, Interese: {best_match.interests}, Bio: {best_match.bio}\n"
+            f"Începe textul direct cu un emoji steluță (✨) și nu folosi introduceri plictisitoare. Justificarea trebuie să fie adresată direct primului utilizator."
+        )
+
+        # --- Conexiunea cu OLLAMA LOCAL ---
+        ollama_url = "http://localhost:11434/api/generate"
+        payload = {
+            "model": "llama3",
+            "prompt": prompt,
+            "stream": False
+        }
+        
+        try:
+            # Apelăm AI-ul cu limită de 2 minute
+            response = requests.post(ollama_url, json=payload, timeout=120)
+            if response.status_code == 200:
+                result = response.json()
+                ai_reason = result.get('response', '').strip()
+            else:
+                ai_reason = f"✨ Recomandare specială! Analiza AI indică compatibilitate ridicată pe baza interesului pentru: {interese_afisate}."
+        except Exception as e:
+            print(f"❌ Eroare AI Local (Matchmaker): {e}")
+            ai_reason = f"✨ Recomandare specială! Potrivire ridicată pe baza profilurilor voastre din baza de date."
+
+        recommendation = [{
+            "id": best_match.user.id,
+            "username": best_match.user.username,
+            "age": best_match.age or 20,
+            "interests": interese_afisate,
+            "ai_reason": ai_reason
+        }]
+        
+        return JsonResponse(recommendation, safe=False)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

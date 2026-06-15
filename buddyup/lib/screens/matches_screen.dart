@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'edit_profile_screen.dart';
+import 'chat_screen.dart';
 
 class MatchesScreen extends StatefulWidget {
   final int userId;
@@ -12,7 +13,7 @@ class MatchesScreen extends StatefulWidget {
 }
 
 class _MatchesScreenState extends State<MatchesScreen> {
-  List matches = [];
+  List<dynamic> matches = [];
   bool isLoading = true;
 
   @override
@@ -22,7 +23,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
   }
 
   Future<void> fetchMatches() async {
-    // URL-ul trebuie sa fie cel din matches/urls.py (asigura-te ca e 'lista/')
     final url = Uri.parse('http://10.0.2.2:8000/matches/api/lista/?user_id=${widget.userId}');
 
     try {
@@ -30,7 +30,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
 
       if (response.statusCode == 200) {
         setState(() {
-          // Acum primim direct o lista [], deci o putem salva direct
           matches = jsonDecode(response.body);
         });
       } else {
@@ -100,6 +99,21 @@ class _MatchesScreenState extends State<MatchesScreen> {
                 style: const TextStyle(color: Colors.white60),
               ),
               trailing: const Icon(Icons.chat, color: Colors.cyanAccent),
+              
+              // AICI e actiunea corecta cand apesi pe cineva
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatScreen(
+                      userId: widget.userId,
+                      otherUserName: m['username'] ?? "Utilizator",
+                      threadId: m['thread_id'] ?? 1,
+                    ),
+                  ),
+                );
+              },
+
             ),
           );
         },
