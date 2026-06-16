@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'home_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -92,6 +93,24 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       }
+
+      final prefs =
+      await SharedPreferences.getInstance();
+
+      await prefs.setBool(
+        'isLoggedIn',
+        true,
+      );
+
+      await prefs.setString(
+        'username',
+        data['username'],
+      );
+
+      await prefs.setInt(
+        'userId',
+        data['user_id'],
+      );
 
     } catch (e) {
 

@@ -14,7 +14,8 @@ dependencies:
   http: ^1.2.1
   image_picker: ^1.1.2
   flutter_card_swiper: ^7.2.0
-  geolocator: ^13.0.2        # NOU: GPS pentru distanta intre utilizatori
+  geolocator: ^13.0.2
+  shared_preferences: ^2.5.3
 
 dev_dependencies:
   flutter_test:

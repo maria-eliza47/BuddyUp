@@ -10,14 +10,15 @@ urlpatterns = [
     path('profiles/', include('profiles.urls')),
     path('swipes/', include('swipes.urls')),
     path('matches/', include('matches.urls')),
-<<<<<<< Updated upstream
 
     # Rutele pentru AI (asigură-te că fișierul ai_features/urls.py există)
-=======
+
     path('chat/', include('chat.urls')),
     path('reports/', include('reports.urls')),
->>>>>>> Stashed changes
+
     path('ai/', include('ai_features.urls')),
+    path('reports/', include('reports.urls')),
+    path('chat/', include('chat.urls')),
 ]
 
 # Servirea fișierelor media și statice

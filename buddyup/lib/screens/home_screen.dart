@@ -23,6 +23,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<dynamic> profiles = [];
   bool isLoading = true;
+  final Map<int, int> currentImageIndex = {};
+
   final CardSwiperController controller = CardSwiperController();
 
   @override
@@ -46,7 +48,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _requestPermission() async {
     try {
-      // Verifica daca serviciile de locatie sunt activate la nivel de sistem
       final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         debugPrint('Location services disabled — skipping permission request');
@@ -115,6 +116,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (response.statusCode == 200) {
         setState(() {
           profiles = jsonDecode(response.body);
+          for (int i = 0; i < profiles.length; i++) {
+            currentImageIndex[i] = 0;
+          }
         });
       } else {
         debugPrint('Eroare Server: ${response.statusCode}');
@@ -157,6 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final response = await http.post(url);
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['is_match'] == true && mounted) {
@@ -177,6 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
       }
+      return true;
     } catch (e) {
       debugPrint('Swipe API error: $e');
     }
@@ -215,8 +221,23 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: TextStyle(color: Colors.white))),
               );
             }
-            final List picks =
-            jsonDecode((snapshot.data as http.Response).body);
+
+            final response = snapshot.data as http.Response;
+            final decodedData = jsonDecode(response.body);
+
+            if (decodedData is Map) {
+              return SizedBox(
+                height: 200,
+                child: Center(
+                  child: Text(
+                    "Eroare Server: ${decodedData['error']}",
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                ),
+              );
+            }
+
+            final List picks = decodedData;
             if (picks.isEmpty) {
               return const SizedBox(
                 height: 200,
@@ -225,6 +246,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: TextStyle(color: Colors.white))),
               );
             }
+
             final pick = picks[0];
             return Padding(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 36),
@@ -250,8 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     leading: const CircleAvatar(
                       radius: 25,
                       backgroundColor: Colors.amberAccent,
-                      child:
-                      Icon(Icons.person, color: Color(0xFF0F172A)),
+                      child: Icon(Icons.person, color: Color(0xFF0F172A)),
                     ),
                     title: Text(
                       '${pick['username']}, ${pick['age']}',
@@ -261,8 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(pick['interests'] ?? '',
-                        style:
-                        const TextStyle(color: Colors.cyanAccent)),
+                        style: const TextStyle(color: Colors.cyanAccent)),
                   ),
                   const SizedBox(height: 15),
                   Container(
@@ -272,8 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: const Color(0xFF0F172A),
                       borderRadius: BorderRadius.circular(15),
                       border: Border.all(
-                          color:
-                          Colors.amberAccent.withValues(alpha: 0.3)),
+                          color: Colors.amberAccent.withValues(alpha: 0.3)),
                     ),
                     child: Text(
                       pick['ai_reason'],
@@ -301,14 +320,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerTop,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAIPicks,
         backgroundColor: Colors.amberAccent,
         icon: const Icon(Icons.auto_awesome, color: Color(0xFF0F172A)),
         label: const Text('AI Picks',
             style: TextStyle(
-                color: Color(0xFF0F172A),
-                fontWeight: FontWeight.bold)),
+                color: Color(0xFF0F172A), fontWeight: FontWeight.bold)),
       ),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -328,7 +347,9 @@ class _HomeScreenState extends State<HomeScreen> {
           onPressed: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => MatchesScreen(userId: widget.userId),
+              builder: (context) => MatchesScreen(
+                userId: widget.userId,
+              ),
             ),
           ),
         ),
@@ -343,6 +364,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   username: widget.username,
                   description: '',
                   userId: widget.userId,
+                  otherUserId: widget.userId,
                 ),
               ),
             ),
@@ -372,7 +394,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 backCardOffset: const Offset(0, 20),
                 padding: EdgeInsets.zero,
                 cardBuilder: (context, index, h, v) =>
-                    _buildProfileCard(profiles[index]),
+                    _buildProfileCard(profiles[index], index),
               ),
             ),
           ),
@@ -384,15 +406,31 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ──────────────────────────────────────────
-  // CARD PROFIL
+  // CARD PROFIL (COMBINAT DESIGN + GALERIE)
   // ──────────────────────────────────────────
 
-  Widget _buildProfileCard(dynamic profile) {
+  Widget _buildProfileCard(dynamic profile, int cardIndex) {
     String? imageUrl = profile['profile_picture'];
+
     if (imageUrl != null && imageUrl.contains('127.0.0.1')) {
       imageUrl = imageUrl.replaceAll('127.0.0.1', '10.0.2.2');
     }
 
+    // Configurare listă imagini pentru galerie
+    List<String> allImages = [];
+    if (imageUrl != null) {
+      allImages.add(imageUrl);
+    }
+    if (profile['gallery_images'] != null) {
+      for (var img in profile['gallery_images']) {
+        allImages.add(img.toString().replaceAll('127.0.0.1', '10.0.2.2'));
+      }
+    }
+    if (allImages.isEmpty) {
+      allImages.add('');
+    }
+
+    final selectedImage = currentImageIndex[cardIndex] ?? 0;
     final double? distanceKm = profile['distance_km'] != null
         ? (profile['distance_km'] as num).toDouble()
         : null;
@@ -402,14 +440,34 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Poza de fundal
-          imageUrl != null
-              ? Image.network(
-            imageUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _buildPlaceholder(),
-          )
-              : _buildPlaceholder(),
+          // Poza de fundal cu gesture detector pentru tap
+          GestureDetector(
+            onTapDown: (details) {
+              final width = MediaQuery.of(context).size.width;
+              if (details.localPosition.dx > width / 2) {
+                // Tap dreapta -> poza urmatoare
+                if (selectedImage < allImages.length - 1) {
+                  setState(() {
+                    currentImageIndex[cardIndex] = selectedImage + 1;
+                  });
+                }
+              } else {
+                // Tap stanga -> poza anterioara
+                if (selectedImage > 0) {
+                  setState(() {
+                    currentImageIndex[cardIndex] = selectedImage - 1;
+                  });
+                }
+              }
+            },
+            child: allImages[selectedImage].isNotEmpty
+                ? Image.network(
+              allImages[selectedImage],
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _buildPlaceholder(),
+            )
+                : _buildPlaceholder(),
+          ),
 
           // Gradient la baza cardului
           Positioned.fill(
@@ -421,7 +479,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   colors: [
                     Colors.transparent,
                     Colors.black.withValues(alpha: 0.15),
-                    Colors.black.withValues(alpha: 0.80),
+                    Colors.black.withValues(alpha: 0.85),
                   ],
                   stops: const [0.40, 0.65, 1.0],
                 ),
@@ -513,6 +571,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
+                const SizedBox(height: 12),
+
+                // Punctuletele indicatoare de poze (din develop)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    allImages.length,
+                        (index) => Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: index == selectedImage
+                            ? Colors.cyanAccent
+                            : Colors.white38,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -584,8 +662,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.people_outline,
-              size: 72, color: Colors.white24),
+          const Icon(Icons.people_outline, size: 72, color: Colors.white24),
           const SizedBox(height: 16),
           const Text(
             'Nu mai sunt utilizatori!',
@@ -602,8 +679,7 @@ class _HomeScreenState extends State<HomeScreen> {
               side: const BorderSide(color: Colors.cyanAccent, width: 1),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20)),
-              padding:
-              const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             icon: const Icon(Icons.refresh_rounded),
             label: const Text('Reîncarcă'),

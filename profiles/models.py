@@ -45,4 +45,24 @@ class Profile(models.Model):
     def __str__(self):
         return self.user.username
 
+class ProfileImage(models.Model):
+
+    profile = models.ForeignKey(
+        Profile,
+        on_delete=models.CASCADE,
+        related_name='images'
+    )
+
+    image = models.ImageField(
+        upload_to='profile_gallery/'
+    )
+
+    uploaded_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    def __str__(self):
+
+        return f"{self.profile.user.username} image"
+
 # Create your models here.
