@@ -133,7 +133,7 @@ Deoarece emulatorul Android rulează într-o rețea virtuală, localhost sau 127
 
 Flutter este configurat în serviciile sale de networking să convertească automat adresa IP a imaginilor media. Backend-ul trimite URL-uri de imagini care conțin 127.0.0.1, iar Flutter, la recepție, înlocuiește dinamic acest IP cu 10.0.2.2, care este adresa specială folosită de emulator pentru a accesa localhost-ul mașinii gazdă. Acest lucru permite încărcarea corectă a imaginilor media în aplicație în timpul dezvoltării.
 
-👥 Echipa de Dezvoltare
+## 👥 Echipa de Dezvoltare
 Vișan Laura-Mihaela
 
 Pîrvulescu Maria-Eliza
