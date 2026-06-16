@@ -1,113 +1,89 @@
 # BuddyUp! - Social Matching Application
 
-BuddyUp este o aplicație mobilă de tip social matching în plină dezvoltare, concepută pentru a facilita conexiuni autentice între utilizatori prin intermediul unui sistem de profiluri detaliate, swipe-uri și match-uri inteligente bazate pe interese comune.
+BuddyUp este o aplicație mobilă de tip *social matching* avansată, aflată în fază activă de dezvoltare, concepută pentru a facilita conexiuni autentice între utilizatori pe baza intereselor comune și a proximității geografice. Spre deosebire de aplicațiile clasice, BuddyUp pune accent pe crearea de comunități și prietenii bazate pe pasiuni similare.
 
-Proiectul este dezvoltat folosind tehnologiile **Flutter** (pentru frontend-ul mobil) și **Django REST Framework** (pentru backend-ul robust).
-
-## Prezentare Vizuală (Screenshots - În dezvoltare)
-
-| Register | Login | Home (Swipe) |
-| --- | --- | --- |
-|  |  |  |
-
-| Profile | Edit Profile | Chat |
-| --- | --- | --- |
-|  |  |  |
+Proiectul adoptă o arhitectură modernă client-server, utilizând **Flutter** pentru o experiență de utilizator fluidă pe mobil și **Django REST Framework (DRF)** pentru un backend robust, scalabil și securizat.
 
 ---
 
-## Funcționalități Implementate & Logica de Business
+##  Prezentare Vizuală (Screenshots Interfață)
 
-Această secțiune detaliază motorul aplicației, explicând cum interacționează utilizatorii și cum sunt gestionate datele.
+Interfața aplicației este concepută urmând principiile *Material Design 3*, oferind un aspect curat, intuitiv și modern, cu suport pentru teme personalizate.
 
-### 1. Sistem de Înregistrare și Autentificare (Securitate)
+| Flux Înregistrare | Flux Autentificare | Ecran Principal (Swipe) |
+| :---: | :---: | :---: |
+| ![Register](screenshots/register.jpg) | ![Login](screenshots/login.jpg) | ![Home](screenshots/home.jpg) |
+| *Interfața de creare cont, cu validare în timp real.* | *Ecran securizat de login.* | *Sistemul de carduri swipable pentru descoperirea utilizatorilor.* |
 
-* **Creare Cont:** Permite utilizatorilor noi să își creeze un cont folosind un username unic și o parolă.
-* **Securitate la Nivel de Backend:** Parolele nu sunt salvate în clar; Django le securizează automat folosind sistemul său intern de hashing (PBKDF2 cu SHA256).
-* **Validare REST:** Backend-ul verifică automat unicitatea username-ului și validează datele. Schimbul de date se realizează exclusiv prin endpoint-uri REST în format JSON, cu gestionarea erorilor.
-
-### 2. Managementul Profilului și Localizare (GPS)
-
-* **Profil Detaliat:** Utilizatorii își pot personaliza profilul cu biografie, vârstă și interese (selectate dintr-o listă predefinită).
-* **Management Media:** Încărcarea unei poze de profil și a unei galerii de imagini, folosind pachetul `image_picker` pe telefon.
-* **Integrare GPS:** Aplicația preia coordonatele geografice (latitudine și longitudine) ale utilizatorului pentru a permite viitoare funcționalități de proximitate (ex: afișarea distanței).
-
-### 3. Motorul de Social Matching (Swipe & Match)
-
-Acesta este nucleul aplicației. Logica a fost implementată pentru a genera conexiuni relevante.
-
-#### A. Mecanica Swipe (LIKE/PASS)
-
-Backend-ul oferă un endpoint REST (/swipes/api/inregistreaza-swipe/) care primește trei parametri:
-
-1. Utilizatorul care oferă swipe-ul.
-2. Utilizatorul care primește swipe-ul.
-3. Acțiunea (LIKE - dreapta sau PASS - stânga).
-
-Dacă utilizatorul a oferit deja un swipe aceleiași persoane, acțiunea anterioară este ștearsă și înlocuită cu cea nouă.
-
-#### B. Generarea Automată a Match-urilor
-
-Aplicația implementează logica de „LIKE reciproc”. Atunci când un utilizator oferă un LIKE (acțiunea 'RIGHT'), backend-ul verifică instantaneu dacă există un LIKE anterior din partea celuilalt utilizator.
-
-* Dacă ambele LIKE-uri există, un **Match** este creat automat între cei doi utilizatori.
-
-#### C. Descoperirea Profilurilor prin Interese Comune
-
-Un endpoint major (`/swipes/api/get-utilizatori-filtrati/`) a fost implementat pentru a popula ecranul de Swipe. Acesta folosește un algoritm de filtrare complex:
-
-* **Excludere Sine:** Utilizatorul curent nu se va vedea niciodată pe sine în lista de swipe.
-* **Excludere Match-uri Existente:** Utilizatorii cu care ești deja într-un match nu vor apărea.
-* **Filtrare după Interese Comune:** Aplicația returnează doar profilurile utilizatorilor care **împărtășesc cel puțin un interes** cu utilizatorul curent. Acest lucru asigură că swipe-urile sunt oferite pe baza unei posibile compatibilități, nu doar vizual.
+| Profil Utilizator | Editare Profil | Vizualizare Chat |
+| :---: | :---: | :---: |
+| ![Profile](screenshots/profile.jpg) | ![Edit](screenshots/edit_profile.jpg) | ![Chat](screenshots/chat.jpg) |
+| *Afișarea detaliată a biografiei, intereselor și galeriei.* | *Interfața pentru actualizarea datelor personale și media.* | *Sistemul de mesagerie în timp real (concept).* |
 
 ---
 
-## Specificații Tehnice & Arhitectură
+## Funcționalități Detaliate & Logica de Business
 
-### Frontend (Flutter)
+### 1. Sistem Avansat de Securitate și Autentificare
+* **Creare Cont (Register):** Utilizatorii își pot crea un cont unic furnizând un username, email și o parolă puternică.
+* **Securizarea Datelor la Nivel de Backend:** Baza de date Django nu stochează niciodată parolele în clar. Acestea sunt convertite instantaneu în *hash*-uri nereversibile folosind algoritmul **PBKDF2** cu **SHA256**, un standard în industrie.
+* **Validare RESTful:** Toate datele introduse sunt validate atât pe frontend (pentru UX), cât și pe backend (pentru securitate). Endpoint-urile API verifică unicitatea email-ului și a username-ului, returnând erori standardizate în format JSON.
 
-Aplicația mobilă este construită pe o arhitectură modulară, gestionând starea profilului și imaginile dinamic.
+### 2. Managementul Profilului, Media și Interese
+* **Profil Complet:** Fiecare utilizator deține un profil personalizabil ce include: biografie (bio), vârstă (validată), gen și o listă de interese.
+* **Taxonomie Interese:** Interesele sunt selectate dintr-o listă predefinită gestionată pe server, asigurând o consistență în algoritmul de *matching*.
+* **Management Media Multipart:** Utilizatorii pot încărca o poză principală de profil și mai multe imagini în galeria personală. Acest lucru este realizat prin cereri HTTP de tip `multipart/form-data`, gestionate eficient de Django.
 
-* **UI/UX:** Widget-uri Flutter native și pachete comunitare precum `flutter_card_swiper` pentru mecanica swipe.
-* **Networking:** Pachetul `http` este utilizat pentru cereri REST și cereri multipart (necesare pentru încărcarea pozelor de profil/galerie).
-* **Pachete Cheie:** `http`, `image_picker`, `flutter_card_swiper`, `geolocator`.
+### 3. Sistemul de Localizare GPS & Proximitate (Deep Dive)
+Aceasta este o funcționalitate cheie a BuddyUp, concepută pentru a aduce utilizatorii online în lumea reală.
 
-### Backend (Django & Django REST Framework)
+#### A. Fluxul Tehnic de Funcționare:
+1.  **Activare & Permisiuni (Flutter):** La prima pornire sau la accesarea ecranului de Swipe, aplicația solicită permisiunea de a accesa locația dispozitivului.
+2.  **Preluarea Coordonatelor (geolocator):** Flutter utilizează pachetul `geolocator` pentru a obține coordonatele GPS exacte (latitudine și longitudine) de la sistemul de operare al telefonului (Android/iOS).
+3.  **Sincronizare cu Backend (API):** Flutter trimite aceste coordonate printr-o cerere POST către endpoint-ul API `update-location/`.
+4.  **Stocare în Bază de Date (Django):** Modelul `Profile` din Django actualizează câmpurile `latitude` și `longitude` pentru utilizatorul respectiv.
 
-Backend-ul este structurat în aplicații Django separate (`swipes`, `profiles`, `matches`, `buddyup`), oferind o API REST securizată.
+#### B. Permisiuni NecesarE:
+Aplicația solicită permisiuni specifice pentru a funcționa corect:
+* **Android:**
+    * `ACCESS_FINE_LOCATION` (pentru locație precisă GPS).
+    * `ACCESS_COARSE_LOCATION` (pentru locație aproximativă prin rețea).
+* **iOS:**
+    * `NSLocationWhenInUseUsageDescription` (pentru a accesa locația doar când aplicația este deschisă).
 
-* **Modele de Date Principală:**
-* `Profile`: Extinde modelul `User` pentru a stoca biografia, vârsta, interesele, coordonatele GPS și media.
-* `Swipe`: Înregistrează fiecare interacțiune (Swiper, Swiped_User, Tip: LIKE/PASS).
-* `Match`: Înregistrează conexiunile (User1, User2) create din LIKE-uri reciproce, cu utilizatorii sortați automat după ID pentru a evita duplicatele.
+#### C. Integrare în Interfață (UI):
+Deși în această fază locația este doar stocată, arhitectura este pregătită pentru a afișa distanța (ex: *"la 5km distanță"* concept) direct pe cardurile de swipe, folosind calcule matematice de distanță pe sferă (formula Haversine) direct în backend.
 
+### 4. Algoritmul de Social Matching (Swipe & Match Logic)
 
-* **API Tehnici:** Utilizarea `MultiPartParser` și `FormParser` pentru gestionarea eficientă a încărcărilor media. Imaginile sunt salvate local pe server și accesate prin URL-uri absolute.
+#### A. Mecanica Swipe (LIKE/PASS):
+Ecranul principal folosește o interfață bazată pe carduri (pachetul `flutter_card_swiper`).
+* **Swipe Dreapta (LIKE):** Înregistrează o intenție pozitivă.
+* **Swipe Stânga (PASS):** Înregistrează o intenție neutră/negativă.
+* Backend-ul stochează aceste interacțiuni în tabelul `Swipe`, asigurându-se că un utilizator nu primește swipe de două ori de la aceeași persoană.
+
+#### B. Generarea Automată a Match-urilor (Reciprocitate):
+Atunci când backend-ul primește un swipe de tip 'LIKE', rulează instantaneu un *trigger*:
+* Verifică dacă există deja un LIKE înregistrat în baza de date de la utilizatorul primit spre utilizatorul sursă.
+* Dacă ambele LIKE-uri există (reciprocitate), sistemul creează automat o intrare în tabelul `Match`.
+
+#### C. Filtrarea Profilurilor bazată pe Interese Comune (Logica de Descoperire):
+Utilizatorii afișați în ecranul de Swipe nu sunt aleși aleatoriu. Endpoint-ul API `/swipes/api/get-utilizatori-filtrati/` implementează un algoritm de filtrare complex:
+1.  **Excludere Sine:** Utilizatorul curent nu se va vedea niciodată pe sine.
+2.  **Excludere Match-uri:** Utilizatorii cu care ești deja într-un match sunt ascunși.
+3.  **Filtrare Interese (Nucleul):** Django analizează lista de interese a utilizatorului curent și returnează doar profilurile utilizatorilor care **împărtășesc cel puțin un interes comun**. Aceasta asigură că swiping-ul este relevant și bazat pe pasiuni similare, nu doar pe aspect.
 
 ---
 
-## Ghid de Dezvoltare și Testare Locală
+## Arhitectură Tehnică & Arborescență
 
-Acest proiect include o configurare specială pentru a facilita testarea pe emulatorul Android, care vede serverul local la o adresă IP diferită.
+### Stack Tehnologic
+* **Frontend Mobile:** Flutter (Dart), folosind pachete cheie precum `http`, `image_picker`, `flutter_card_swiper`, `geolocator`.
+* **Backend API:** Django, Django REST Framework (Python), gestionând autentificarea, baza de date, media și logica de matching.
 
-### Configurarea Android Emulator
-
-Când se rulează backend-ul pe `127.0.0.1:8000` (localhost), emulatorul Android nu îl poate accesa direct.
-
-* **Rulare Backend:** Serverul Django trebuie pornit pe `0.0.0.0` pentru a accepta conexiuni externe:
-```bash
-python manage.py runserver 0.0.0.0:8000
-
-```
+### Arborescență Proiect (Structură Simplificată)
 
 
-* **Android IP Bridge:** Flutter a fost configurat pentru a converti automat adresa IP locală a imaginilor. În cod, `127.0.0.1` este înlocuit cu `10.0.2.2`, care este adresa specială folosită de emulatorul Android pentru a accesa localhost-ul mașinii gazdă.
-
-### Cerințe Instalare
-
-(Se vor adăuga instrucțiunile de instalare pentru Flutter, Django și baza de date, odată ce proiectul este gata pentru deployment local).
-
----
 
 ## Echipa de Dezvoltare
 
