@@ -85,8 +85,57 @@ Utilizatorii afișați în ecranul de Swipe nu sunt aleși aleatoriu. Endpoint-u
 
 
 
-## Echipa de Dezvoltare
+🛠️ Ghid de Dezvoltare și Testare Locală
+Acest proiect necesită rularea simultană a două servere (Backend și Frontend).
 
-* Vișan Laura-Mihaela
-* Pîrvulescu Maria-Eliza
-* Țigănilă Ștefania
+Cerințe Instalare
+Python 3.10+
+
+Flutter SDK (ultima versiune stabilă)
+
+Android Studio / Xcode (pentru emulator)
+
+1. Configurarea Backend-ului (Django)
+Bash
+# Intră în folderul de backend
+cd backend
+
+# Creează un mediu virtual (opțional, recomandat)
+python -m venv venv
+source venv/bin/activate  # Pe Windows: venv\Scripts\activate
+
+# Instalează dependențele (se va adăuga requirements.txt)
+pip install django djangorestframework pillow geopy django-cors-headers
+
+# Efectuează migrarea bazei de date (creează tabelele)
+python manage.py migrate
+
+# Pornește serverul de dezvoltare
+python manage.py runserver 0.0.0.0:8000
+Notă: Rularea pe 0.0.0.0 este crucială pentru ca emulatorul Android să poată accesa serverul local.
+
+2. Configurarea Frontend-ului (Flutter) & Testare pe Emulator
+Aceasta este o configurare specială pentru a facilita testarea pe emulatorul Android, care vede serverul local la o adressă IP diferită.
+
+Pachetul geolocator: Asigurați-vă că fișierele de permisiuni (AndroidManifest.xml pentru Android și Info.plist pentru iOS) sunt configurate corect cu descrierile necesare, așa cum este menționat în secțiunea GPS.
+
+Bash
+# Intră în folderul aplicației Flutter
+cd buddyup
+
+# Descarcă dependențele
+flutter pub get
+
+# Pornește aplicația pe emulatorul conectat
+flutter run
+Emulator Testing Bridge (10.0.2.2 Magic)
+Deoarece emulatorul Android rulează într-o rețea virtuală, localhost sau 127.0.0.1 de pe telefon nu este calculatorul dumneavoastră.
+
+Flutter este configurat în serviciile sale de networking să convertească automat adresa IP a imaginilor media. Backend-ul trimite URL-uri de imagini care conțin 127.0.0.1, iar Flutter, la recepție, înlocuiește dinamic acest IP cu 10.0.2.2, care este adresa specială folosită de emulator pentru a accesa localhost-ul mașinii gazdă. Acest lucru permite încărcarea corectă a imaginilor media în aplicație în timpul dezvoltării.
+
+👥 Echipa de Dezvoltare
+Vișan Laura-Mihaela
+
+Pîrvulescu Maria-Eliza
+
+Țigănilă Ștefania
