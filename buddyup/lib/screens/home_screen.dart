@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
 import 'profile_screen.dart';
 import 'matches_screen.dart';
 
@@ -30,10 +30,78 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _updateLocationThenFetch();
+  }
+
+  // ──────────────────────────────────────────
+  // GPS — timeout de 5s ca sa nu blocheze loading-ul
+  // ──────────────────────────────────────────
+
+  Future<void> _updateLocationThenFetch() async {
+    await _requestPermission();
+    await _fetchAndSendLocation().timeout(
+      const Duration(seconds: 8),
+      onTimeout: () {},
+    );
     fetchPotentialMatches();
   }
 
-  // FUNCTIA CARE INCARCA DATELE
+  Future<void> _requestPermission() async {
+    try {
+      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        debugPrint('Location services disabled — skipping permission request');
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      debugPrint('Initial location permission: $permission');
+
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        debugPrint('After request, permission: $permission');
+      }
+    } catch (e) {
+      debugPrint('Permission request failed: $e');
+    }
+  }
+
+  Future<void> _fetchAndSendLocation() async {
+    try {
+      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      final LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) return;
+
+      Position? pos = await Geolocator.getLastKnownPosition();
+      pos ??= await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+        ),
+      );
+
+      debugPrint('Got position: ${pos.latitude}, ${pos.longitude}');
+
+      await http.post(
+        Uri.parse('http://10.0.2.2:8000/swipes/api/update-location/'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': widget.userId,
+          'latitude': pos.latitude,
+          'longitude': pos.longitude,
+        }),
+      );
+    } catch (e) {
+      debugPrint('Location fetch/send failed: $e');
+    }
+  }
+
+  // ──────────────────────────────────────────
+  // INCARCARE PROFILURI
+  // ──────────────────────────────────────────
+
   Future<void> fetchPotentialMatches() async {
     if (!mounted) return;
     setState(() => isLoading = true);
@@ -43,8 +111,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     try {
-      final response = await http.get(url).timeout(const Duration(seconds: 10));
-
+      final response =
+      await http.get(url).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         setState(() {
           profiles = jsonDecode(response.body);
@@ -53,39 +121,38 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         });
       } else {
-        debugPrint("Eroare Server: ${response.statusCode}");
+        debugPrint('Eroare Server: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint("Eroare la incarcare: $e");
-
+      debugPrint('Eroare la incarcare: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Eroare de conexiune la server!")),
+          const SnackBar(
+            content: Text('Eroare de conexiune la server!'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
+  // ──────────────────────────────────────────
+  // SWIPE
+  // ──────────────────────────────────────────
+
   Future<bool> _onSwipe(
-    int previousIndex,
-    int? currentIndex,
-    CardSwiperDirection direction,
-  ) async {
-    if (previousIndex >= profiles.length) {
-      return false;
-    }
+      int previousIndex,
+      int? currentIndex,
+      CardSwiperDirection direction,
+      ) async {
+    if (previousIndex >= profiles.length) return true;
 
     final swipedProfile = profiles[previousIndex];
-
     final String swipeType =
-        (direction == CardSwiperDirection.right) ? 'like' : 'dislike';
-
+    (direction == CardSwiperDirection.right) ? 'like' : 'dislike';
     final int swipedId = swipedProfile['id'];
 
     final url = Uri.parse(
@@ -97,174 +164,186 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
-        if (data['is_match'] == true) {
+        if (data['is_match'] == true && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                "MATCH! Te-ai potrivit cu ${swipedProfile['username']}!",
+              content: Row(
+                children: [
+                  const Icon(Icons.favorite, color: Colors.white),
+                  const SizedBox(width: 10),
+                  Text('MATCH cu ${swipedProfile['username']}!'),
+                ],
               ),
               backgroundColor: Colors.pinkAccent,
               behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
           );
         }
       }
-
       return true;
     } catch (e) {
-      return false;
+      debugPrint('Swipe API error: $e');
     }
+    return true;
   }
 
-  // Funcția care deschide sertarul cu recomandările AI
+  // ──────────────────────────────────────────
+  // AI PICKS
+  // ──────────────────────────────────────────
+
   void _showAIPicks() {
     showModalBottomSheet(
-        context: context,
-        backgroundColor: const Color(0xFF1E293B),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-        ),
-        builder: (context) {
-          return FutureBuilder(
-              // Apelăm endpoint-ul nou creat în Django
-              future: http.get(Uri.parse(
-                  'http://10.0.2.2:8000/swipes/api/ai-picks/?user_id=${widget.userId}')),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SizedBox(
-                      height: 200,
-                      child: Center(
-                          child: CircularProgressIndicator(
-                              color: Colors.amberAccent)));
-                }
-                if (!snapshot.hasData || snapshot.hasError) {
-                  return const SizedBox(
-                      height: 200,
-                      child: Center(
-                          child: Text("Eroare la conectarea cu AI-ul.",
-                              style: TextStyle(color: Colors.white))));
-                }
+      context: context,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) {
+        return FutureBuilder(
+          future: http.get(Uri.parse(
+              'http://10.0.2.2:8000/swipes/api/ai-picks/?user_id=${widget.userId}')),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 200,
+                child: Center(
+                    child: CircularProgressIndicator(
+                        color: Colors.amberAccent)),
+              );
+            }
+            if (!snapshot.hasData || snapshot.hasError) {
+              return const SizedBox(
+                height: 200,
+                child: Center(
+                    child: Text('Eroare la conectarea cu AI-ul.',
+                        style: TextStyle(color: Colors.white))),
+              );
+            }
 
-              final response = snapshot.data as http.Response;
-              final decodedData = jsonDecode(response.body);
+            final response = snapshot.data as http.Response;
+            final decodedData = jsonDecode(response.body);
 
-              // Verificăm dacă serverul ne-a trimis o eroare (un Map) în loc de o listă
-              if (decodedData is Map) {
-                return SizedBox(
-                  height: 200, 
-                  child: Center(
-                    child: Text(
-                      "Eroare Server: ${decodedData['error']}", 
-                      style: const TextStyle(color: Colors.redAccent)
-                    )
-                  )
-                );
-              }
+            if (decodedData is Map) {
+              return SizedBox(
+                height: 200,
+                child: Center(
+                  child: Text(
+                    "Eroare Server: ${decodedData['error']}",
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                ),
+              );
+            }
 
-              // Dacă totul e ok, transformăm datele în listă
-              final List picks = decodedData;
-                if (picks.isEmpty) {
-                  return const SizedBox(
-                      height: 200,
-                      child: Center(
-                          child: Text("AI-ul nu a găsit nicio recomandare azi.",
-                              style: TextStyle(color: Colors.white))));
-                }
+            final List picks = decodedData;
+            if (picks.isEmpty) {
+              return const SizedBox(
+                height: 200,
+                child: Center(
+                    child: Text('AI-ul nu a găsit nicio recomandare azi.',
+                        style: TextStyle(color: Colors.white))),
+              );
+            }
 
-                final pick = picks[0]; // Luăm prima recomandare
-
-                return Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            final pick = picks[0];
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 36),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
                     children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.auto_awesome,
-                              color: Colors.amberAccent, size: 28),
-                          SizedBox(width: 10),
-                          Text("Top Pick by AI",
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      const SizedBox(height: 25),
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const CircleAvatar(
-                            radius: 25,
-                            backgroundColor: Colors.amberAccent,
-                            child: Icon(Icons.person, color: Color(0xFF0F172A))),
-                        title: Text("${pick['username']}, ${pick['age']}",
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold)),
-                        subtitle: Text(pick['interests'] ?? "",
-                            style: const TextStyle(color: Colors.cyanAccent)),
-                      ),
-                      const SizedBox(height: 15),
-                      Container(
-                        padding: const EdgeInsets.all(15),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0F172A),
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(
-                              color: Colors.amberAccent.withOpacity(0.3)),
-                        ),
-                        child: Text(
-                          pick['ai_reason'],
-                          style: const TextStyle(
-                              color: Colors.amberAccent,
-                              fontSize: 15,
-                              height: 1.4,
-                              fontStyle: FontStyle.italic),
-                        ),
-                      ),
-                      const SizedBox(height: 30),
+                      Icon(Icons.auto_awesome,
+                          color: Colors.amberAccent, size: 28),
+                      SizedBox(width: 10),
+                      Text('Top Pick by AI',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold)),
                     ],
                   ),
-                );
-              });
-        });
+                  const SizedBox(height: 20),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const CircleAvatar(
+                      radius: 25,
+                      backgroundColor: Colors.amberAccent,
+                      child: Icon(Icons.person, color: Color(0xFF0F172A)),
+                    ),
+                    title: Text(
+                      '${pick['username']}, ${pick['age']}',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(pick['interests'] ?? '',
+                        style: const TextStyle(color: Colors.cyanAccent)),
+                  ),
+                  const SizedBox(height: 15),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(
+                          color: Colors.amberAccent.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      pick['ai_reason'],
+                      style: const TextStyle(
+                          color: Colors.amberAccent,
+                          fontSize: 15,
+                          height: 1.5,
+                          fontStyle: FontStyle.italic),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
+
+  // ──────────────────────────────────────────
+  // BUILD PRINCIPAL
+  // ──────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
-      
-      // ACEASTA ESTE LINIA CARE MUTĂ BUTONUL SUS:
       floatingActionButtonLocation: FloatingActionButtonLocation.centerTop,
-      
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAIPicks,
         backgroundColor: Colors.amberAccent,
         icon: const Icon(Icons.auto_awesome, color: Color(0xFF0F172A)),
-        label: const Text("AI Picks",
+        label: const Text('AI Picks',
             style: TextStyle(
                 color: Color(0xFF0F172A), fontWeight: FontWeight.bold)),
       ),
       appBar: AppBar(
-        title: const Text(
-          "BuddyUp",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.cyanAccent,
-          ),
-        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.message,
+        title: const Text(
+          'BuddyUp',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
             color: Colors.cyanAccent,
           ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.message_rounded, color: Colors.cyanAccent),
+          tooltip: 'Matches',
           onPressed: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -276,16 +355,14 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(
-              Icons.person,
-              color: Colors.cyanAccent,
-            ),
+            icon: const Icon(Icons.person_rounded, color: Colors.cyanAccent),
+            tooltip: 'Profilul meu',
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => ProfileScreen(
                   username: widget.username,
-                  description: "",
+                  description: '',
                   userId: widget.userId,
                   otherUserId: widget.userId,
                 ),
@@ -296,186 +373,217 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: isLoading
           ? const Center(
-              child: CircularProgressIndicator(
-                color: Colors.cyanAccent,
-              ),
-            )
+          child: CircularProgressIndicator(color: Colors.cyanAccent))
           : profiles.isEmpty
-              ? _buildEmptyState()
-              : Column(
-                  children: [
-                    Expanded(
-                      child: CardSwiper(
-                        controller: controller,
-                        cardsCount: profiles.length,
-                        onSwipe: _onSwipe,
-                        numberOfCardsDisplayed:
-                            profiles.length > 3 ? 3 : profiles.length,
-                        cardBuilder: (
-                          context,
-                          index,
-                          h,
-                          v,
-                        ) =>
-                            _buildProfileCard(
-                              profiles[index],
-                              index,
-                        ),
-                      ),
-                    ),
-                    _buildActionButtons(),
-                    const SizedBox(
-                      height: 20,
-                    ),
-                  ],
-                ),
+          ? _buildEmptyState()
+          : Column(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 8),
+              child: CardSwiper(
+                controller: controller,
+                cardsCount: profiles.length,
+                onSwipe: _onSwipe,
+                onEnd: () {
+                  if (mounted) setState(() => profiles = []);
+                },
+                numberOfCardsDisplayed:
+                profiles.length > 3 ? 3 : profiles.length,
+                backCardOffset: const Offset(0, 20),
+                padding: EdgeInsets.zero,
+                cardBuilder: (context, index, h, v) =>
+                    _buildProfileCard(profiles[index], index),
+              ),
+            ),
+          ),
+          _buildActionButtons(),
+          const SizedBox(height: 24),
+        ],
+      ),
     );
   }
 
-  Widget _buildProfileCard(
-      dynamic profile,
-      int cardIndex,
-      ) {
+  // ──────────────────────────────────────────
+  // CARD PROFIL (COMBINAT DESIGN + GALERIE)
+  // ──────────────────────────────────────────
+
+  Widget _buildProfileCard(dynamic profile, int cardIndex) {
     String? imageUrl = profile['profile_picture'];
 
     if (imageUrl != null && imageUrl.contains('127.0.0.1')) {
-      imageUrl = imageUrl.replaceAll(
-        '127.0.0.1',
-        '10.0.2.2',
-      );
+      imageUrl = imageUrl.replaceAll('127.0.0.1', '10.0.2.2');
     }
 
+    // Configurare listă imagini pentru galerie
     List<String> allImages = [];
-
     if (imageUrl != null) {
       allImages.add(imageUrl);
     }
-
     if (profile['gallery_images'] != null) {
       for (var img in profile['gallery_images']) {
-        allImages.add(
-          img.toString().replaceAll(
-            '127.0.0.1',
-            '10.0.2.2',
-          ),
-        );
+        allImages.add(img.toString().replaceAll('127.0.0.1', '10.0.2.2'));
       }
     }
-
     if (allImages.isEmpty) {
       allImages.add('');
     }
 
-    final selectedImage =
-        currentImageIndex[cardIndex] ?? 0;
+    final selectedImage = currentImageIndex[cardIndex] ?? 0;
+    final double? distanceKm = profile['distance_km'] != null
+        ? (profile['distance_km'] as num).toDouble()
+        : null;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(20),
-      ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
       child: Stack(
+        fit: StackFit.expand,
         children: [
+          // Poza de fundal cu gesture detector pentru tap
+          GestureDetector(
+            onTapDown: (details) {
+              final width = MediaQuery.of(context).size.width;
+              if (details.localPosition.dx > width / 2) {
+                // Tap dreapta -> poza urmatoare
+                if (selectedImage < allImages.length - 1) {
+                  setState(() {
+                    currentImageIndex[cardIndex] = selectedImage + 1;
+                  });
+                }
+              } else {
+                // Tap stanga -> poza anterioara
+                if (selectedImage > 0) {
+                  setState(() {
+                    currentImageIndex[cardIndex] = selectedImage - 1;
+                  });
+                }
+              }
+            },
+            child: allImages[selectedImage].isNotEmpty
+                ? Image.network(
+              allImages[selectedImage],
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _buildPlaceholder(),
+            )
+                : _buildPlaceholder(),
+          ),
 
+          // Gradient la baza cardului
           Positioned.fill(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: GestureDetector(
-                onTapDown: (details) {
-
-                  final width =
-                      MediaQuery.of(context).size.width;
-
-                  if (details.localPosition.dx >
-                      width / 2) {
-
-                    if (selectedImage <
-                        allImages.length - 1) {
-
-                      setState(() {
-
-                        currentImageIndex[cardIndex] =
-                            selectedImage + 1;
-                      });
-                    }
-
-                  } else {
-
-                    if (selectedImage > 0) {
-
-                      setState(() {
-
-                        currentImageIndex[cardIndex] =
-                            selectedImage - 1;
-                      });
-                    }
-                  }
-                },
-
-                child: allImages[selectedImage].isNotEmpty
-
-                    ? Image.network(
-                  allImages[selectedImage],
-                  fit: BoxFit.cover,
-                )
-
-                    : const Icon(
-                  Icons.person,
-                  size: 100,
-                  color: Colors.white24,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.15),
+                    Colors.black.withValues(alpha: 0.85),
+                  ],
+                  stops: const [0.40, 0.65, 1.0],
                 ),
               ),
             ),
           ),
 
+          // Badge distanta — dreapta sus
+          if (distanceKm != null)
+            Positioned(
+              top: 16,
+              right: 16,
+              child: Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: Colors.cyanAccent.withValues(alpha: 0.6)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.location_on,
+                        color: Colors.cyanAccent, size: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$distanceKm km',
+                      style: const TextStyle(
+                        color: Colors.cyanAccent,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Info utilizator — jos
           Positioned(
-            bottom: 20,
+            bottom: 24,
             left: 20,
             right: 20,
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 Text(
-                  "${profile['username']}, ${profile['age']}",
+                  '${profile['username']}, ${profile['age']}',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 28,
+                    fontSize: 26,
                     fontWeight: FontWeight.bold,
+                    shadows: [Shadow(blurRadius: 8, color: Colors.black87)],
                   ),
                 ),
-
-                Text(
-                  profile['interests'] ?? "",
-                  style: const TextStyle(
-                    color: Colors.cyanAccent,
-                    fontSize: 16,
+                if ((profile['interests'] ?? '').toString().isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.interests,
+                          color: Colors.cyanAccent, size: 15),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          profile['interests'],
+                          style: const TextStyle(
+                            color: Colors.cyanAccent,
+                            fontSize: 14,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+                ],
+                if ((profile['bio'] ?? '').toString().isNotEmpty &&
+                    profile['bio'] != "Hey! Let's be buddies.") ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    profile['bio'],
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.75),
+                      fontSize: 13,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 12),
 
-                const SizedBox(
-                  height: 10,
-                ),
-
+                // Punctuletele indicatoare de poze (din develop)
                 Row(
-                  mainAxisAlignment:
-                  MainAxisAlignment.center,
-
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(
                     allImages.length,
                         (index) => Container(
-                      margin:
-                      const EdgeInsets.symmetric(
-                        horizontal: 3,
-                      ),
-
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
                       width: 8,
                       height: 8,
-
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-
                         color: index == selectedImage
                             ? Colors.cyanAccent
                             : Colors.white38,
@@ -491,57 +599,91 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildActionButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        IconButton(
-          icon: const Icon(
-            Icons.close,
-            color: Colors.redAccent,
-            size: 40,
-          ),
-          onPressed: () => controller.swipe(
-            CardSwiperDirection.left,
-          ),
-        ),
-        IconButton(
-          icon: const Icon(
-            Icons.favorite,
-            color: Colors.greenAccent,
-            size: 40,
-          ),
-          onPressed: () => controller.swipe(
-            CardSwiperDirection.right,
-          ),
-        ),
-      ],
+  Widget _buildPlaceholder() {
+    return Container(
+      color: const Color(0xFF1E293B),
+      child: const Center(
+        child: Icon(Icons.person_rounded, size: 100, color: Colors.white24),
+      ),
     );
   }
+
+  // ──────────────────────────────────────────
+  // BUTOANE SWIPE
+  // ──────────────────────────────────────────
+
+  Widget _buildActionButtons() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _swipeButton(
+            icon: Icons.close_rounded,
+            color: Colors.redAccent,
+            onTap: () => controller.swipe(CardSwiperDirection.left),
+          ),
+          _swipeButton(
+            icon: Icons.favorite_rounded,
+            color: Colors.greenAccent,
+            onTap: () => controller.swipe(CardSwiperDirection.right),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _swipeButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color.withValues(alpha: 0.12),
+          border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
+        ),
+        child: Icon(icon, color: color, size: 32),
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────
+  // STARE GOALA
+  // ──────────────────────────────────────────
 
   Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          const Icon(Icons.people_outline, size: 72, color: Colors.white24),
+          const SizedBox(height: 16),
           const Text(
-            "Nu mai sunt utilizatori!",
+            'Nu mai sunt utilizatori!',
             style: TextStyle(
-              color: Colors.white70,
-              fontSize: 18,
-            ),
+                color: Colors.white70,
+                fontSize: 18,
+                fontWeight: FontWeight.w500),
           ),
-          const SizedBox(height: 10),
-          ElevatedButton(
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.cyanAccent.withOpacity(0.2)),
-            onPressed: fetchPotentialMatches,
-            child: const Text(
-              "Reincarca",
-              style: TextStyle(
-                color: Colors.cyanAccent,
-              ),
+              backgroundColor: Colors.cyanAccent.withValues(alpha: 0.15),
+              foregroundColor: Colors.cyanAccent,
+              side: const BorderSide(color: Colors.cyanAccent, width: 1),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Reîncarcă'),
+            onPressed: fetchPotentialMatches,
           ),
         ],
       ),
