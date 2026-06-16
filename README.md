@@ -460,7 +460,7 @@ Toate apelurile API din Flutter folosesc `http://10.0.2.2:8000`. URL-urile de im
 
 | Nume | Responsabilitate principală |
 |---|---|
-| **Vișan Laura-Mihaela** | Module `users`, `profiles` — autentificare, profiluri, mesagerie |
+| **Vișan Laura-Mihaela** | Module `users`, `profiles` — autentificare, profiluri, galerie foto|
 | **Pîrvulescu Maria-Eliza** | Arhitectură generală, `swipes`, `matches`, GPS, integrare client-server, infrastructură |
 | **Țigănilă Ștefania** | Module `reports`, `ai_features`, `chat` — siguranță, funcționalități AI |
 
