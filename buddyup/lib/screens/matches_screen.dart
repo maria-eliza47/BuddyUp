@@ -109,6 +109,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                       userId: widget.userId,
                       otherUserName: m['username'] ?? "Utilizator",
                       threadId: m['thread_id'] ?? 1,
+                      otherUserId: m['user_id'],
                     ),
                   ),
                 );

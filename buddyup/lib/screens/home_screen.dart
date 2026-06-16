@@ -73,7 +73,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) return;
+          permission == LocationPermission.deniedForever) {
+        return;
+      }
 
       Position? pos = await Geolocator.getLastKnownPosition();
       pos ??= await Geolocator.getCurrentPosition(
@@ -464,7 +466,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? Image.network(
               allImages[selectedImage],
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _buildPlaceholder(),
+              errorBuilder: (_, _, _) => _buildPlaceholder(),
             )
                 : _buildPlaceholder(),
           ),
