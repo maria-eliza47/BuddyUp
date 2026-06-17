@@ -212,47 +212,44 @@ Ecranul de chat permite conversații între utilizatorii care s-au potrivit (mat
 
 ---
 
-### 6. Funcționalități AI
+### 6. Funcționalități AI (AI Matchmaking Engine & Icebreaker)
 
-BuddyUp integrează două funcționalități bazate pe AI, marcate vizual cu iconița ✨ albastră.
+BuddyUp integrează un subsistem hibrid de inteligență artificială, rulat 100% local (fără API-uri externe în cloud), pentru a garanta zero costuri operaționale și confidențialitatea totală a datelor utilizatorilor.
 
-#### AI Picks
+#### A. Arhitectura Subsistemului AI
+Sistemul utilizează motorul **Ollama** care rulează ca daemon local pe portul `11434`, expunând un API REST nativ pentru manipularea modelului lingvistic **Llama 3 (8B Instruct)**. Acest model a fost ales pentru capacitatea sa avansată de *Instruction Tuning* și generare de text contextual.
 
-Disponibil din ecranul principal prin butonul **"AI Picks"**. Algoritmul analizează interesele utilizatorului curent și returnează cel mai compatibil profil din baza de date, împreună cu motivul recomandării.
+#### B. AI Picks (Recomandări de Compatibilitate)
+![AI Top Pick](screenshots/ai_picks.png)
+Disponibil din ecranul principal. Algoritmul filtrează baza de date pentru compatibilități, apoi folosește Llama 3 pentru a genera o justificare semantică scurtă și convingătoare de ce doi utilizatori ar trebui să se conecteze.
 
-```
-GET /swipes/api/ai-picks/?user_id=X
-→ { id, username, age, interests, ai_reason }
-```
+**Fluxul de Date (Pipeline):**
+1. **Profile Filtering:** Django ORM filtrează utilizatorii aplicând o mapare a seturilor de interese (`interests`).
+2. **Prompt Composition:** Se construiește dinamic un prompt structurat, injectând variabilele de profil (interese, descriere bio) ale ambilor utilizatori. Se aplică constrângeri stricte de generare: forțarea limbii române, maxim 2 propoziții pentru evitarea *text-overflow* pe UI, și formatare prefixată cu emoji (✨).
 
-Dacă nu există un profil cu interese comune, sistemul returnează o recomandare aleatorie ca fallback.
+**Mecanism de Fallback (Fault Tolerance):**
+Pentru a asigura continuitatea UX, a fost implementat un mecanism de siguranță. Dacă inferența AI eșuează sau depășește limita de `timeout=120s` impusă în backend, sistemul comută automat pe un șablon static generat direct din datele brute din baza de date:
+* *Exemplu Fallback:* `✨ Recomandare specială! Analiza AI indică compatibilitate ridicată pe baza interesului pentru: {interese_afisate}.`
 
-#### AI Icebreaker
+#### C. AI Icebreaker
+Disponibil în ecranul de chat prin butonul ✨. Generează automat un mesaj de deschidere complet personalizat pe baza profilului celuilalt utilizator.
+Comportament UX: Câmpul de text afișează *"Se gândește AI-ul..."* în timpul inferenței, înlocuind apoi textul cu sugestia generată — gata de a fi trimisă sau editată de utilizator.
 
-Disponibil în ecranul de chat prin butonul ✨ sau iconița din AppBar. Generează automat un mesaj de deschidere personalizat pentru conversație.
+### 7. Siguranță și Moderare (Block & Report)
 
-```
-POST /chat/api/icebreaker/
-Body: { user_id, target_user, thread_id }
-→ { suggestion: "..." }
-```
+Pentru a menține o comunitate sigură, autentică și prietenoasă, BuddyUp pune la dispoziția utilizatorilor instrumente simple de moderare a propriilor interacțiuni. Aceste opțiuni pot fi accesate rapid din ecranul de profil al oricărui utilizator, prin meniul din bara de sus (AppBar).
 
-Comportament UX: câmpul de text afișează *"Se gândește AI-ul..."* în timp ce se așteaptă răspunsul, apoi îl înlocuiește cu sugestia generată — gata de trimis sau editat.
+#### A. Funcția de Blocare (Block User)
+Dacă un utilizator nu mai dorește să comunice cu o anumită persoană, o poate bloca instantaneu.
+* **Cum funcționează:** Utilizatorului i se afișează un scurt mesaj de confirmare pentru a preveni apăsările accidentale. Odată blocat, sistemul backend (`/reports/api/block_user/`) taie imediat legătura dintre cei doi, împiedicând orice comunicare viitoare.
+* **Experiența utilizatorului:** După confirmare, utilizatorul primește o notificare vizuală de succes (SnackBar) pe un fundal roșu și este scos automat de pe profilul persoanei blocate.
 
----
+#### B. Funcția de Raportare (Report User)
+În cazul unui comportament inadecvat care încalcă regulile aplicației, utilizatorii pot alerta direct echipa de administrare.
+* **Cum funcționează:** Selectarea acestei opțiuni deschide o fereastră (pop-up) pe ecran, conținând un câmp de text liber. Aici, utilizatorul poate detalia motivul raportării. Datele sunt trimise direct către server (`/reports/api/report_user/`) pentru a fi analizate din panoul de control secret al administratorilor.
+* **Experiența utilizatorului:** Trimite raportul printr-o simplă apăsare de buton, fereastra se închide fluid, iar o notificare confirmă recepționarea cu succes a sesizării.
 
-### 7. Siguranță: Block & Report
-
-Accesibil din ecranul de profil prin meniul `⋮` (trei puncte):
-
-| Acțiune | Endpoint | Efect |
-|---|---|---|
-| **Block User** | `POST /reports/api/block_user/` | Blochează comunicarea reciprocă |
-| **Report User** | `POST /reports/api/report_user/` | Trimite un raport cu motiv liber scris |
-
-Ambele acțiuni cer o confirmare prin dialog modal înainte de execuție.
-
----
+Aceste instrumente asigură că fiecare membru deține controlul absolut asupra propriului spațiu și asupra persoanelor cu care alege să interacționeze în comunitatea BuddyUp.
 
 ## Arhitectură Tehnică & Stack
 
