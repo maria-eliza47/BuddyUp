@@ -38,7 +38,7 @@ Proiectul adoptă o arhitectură modernă **client-server**:
 
 ## Prezentare Vizuală (Screenshots)
 
-Interfața urmează principiile *Material Design 3*, cu o temă personalizată **Peachy Girl** — fundal crem, accente roz-piersică și carduri albe.
+Interfața urmează principiile *Material Design 3*, cu o temă personalizată mai girly -fundal roz, accente roz-piersică și carduri albe.
 
 | Înregistrare | Autentificare | Ecran Principal (Swipe) |
 | :---: | :---: | :---: |
