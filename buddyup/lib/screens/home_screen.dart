@@ -35,7 +35,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _updateLocationThenFetch();
+    //_updateLocationThenFetch();
+    fetchPotentialMatches();
   }
 
   // ──────────────────────────────────────────
@@ -436,180 +437,131 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     if (allImages.isEmpty) allImages.add('');
 
+    final int profileId = profile['id'];
     final selectedImage = currentImageIndex[cardIndex] ?? 0;
     final double? distanceKm = profile['distance_km'] != null
         ? (profile['distance_km'] as num).toDouble()
         : null;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Poza cu gesture tap
-          GestureDetector(
-            onTapDown: (details) {
-              final width = MediaQuery.of(context).size.width;
-              if (details.localPosition.dx > width / 2) {
-                if (selectedImage < allImages.length - 1) {
-                  setState(() =>
-                  currentImageIndex[cardIndex] =
-                      selectedImage + 1);
-                }
-              } else {
-                if (selectedImage > 0) {
-                  setState(() =>
-                  currentImageIndex[cardIndex] =
-                      selectedImage - 1);
-                }
-              }
-            },
-            child: allImages[selectedImage].isNotEmpty
-                ? Image.network(
-              allImages[selectedImage],
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  _buildPlaceholder(),
-            )
-                : _buildPlaceholder(),
-          ),
+    return Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Stack(
+          children: [
 
-          // Gradient jos
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.15),
-                    Colors.black.withValues(alpha: 0.85),
-                  ],
-                  stops: const [0.40, 0.65, 1.0],
-                ),
-              ),
-            ),
-          ),
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: GestureDetector(
+                  onTapDown: (details) {
 
-          // Badge distanta
-          if (distanceKm != null)
-            Positioned(
-              top: 16,
-              right: 16,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: kCard.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: kDeep.withValues(alpha: 0.2),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.location_on,
-                        color: kDeep, size: 14),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$distanceKm km',
-                      style: const TextStyle(
-                        color: kDeep,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+                    final width =
+                        MediaQuery.of(context).size.width;
 
-          // Info utilizator jos
-          Positioned(
-            bottom: 24,
-            left: 20,
-            right: 20,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${profile['username']}, ${profile['age']}',
-                  style: const TextStyle(
-                    color: kCard,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    shadows: [
-                      Shadow(blurRadius: 8, color: Colors.black87)
-                    ],
+                    if (details.localPosition.dx >
+                        width / 2) {
+
+                      if (selectedImage <
+                          allImages.length - 1) {
+
+                        setState(() {
+
+                          currentImageIndex[cardIndex] =
+                              selectedImage + 1;
+                        });
+                      }
+
+                    } else {
+
+                      if (selectedImage > 0) {
+
+                        setState(() {
+
+                          currentImageIndex[cardIndex] =
+                              selectedImage - 1;
+                        });
+                      }
+                    }
+                  },
+
+                  child: allImages[selectedImage].isNotEmpty
+
+                      ? Image.network(
+                    allImages[selectedImage],
+                    fit: BoxFit.cover,
+                  )
+
+                      : const Icon(
+                    Icons.person,
+                    size: 100,
+                    color: Colors.white24,
                   ),
                 ),
-                if ((profile['interests'] ?? '')
-                    .toString()
-                    .isNotEmpty) ...[
-                  const SizedBox(height: 6),
+              ),
+            ),
+
+            Positioned(
+              bottom: 20,
+              left: 20,
+              right: 20,
+              child: Column(
+                crossAxisAlignment:
+                CrossAxisAlignment.start,
+                children: [
+
+                  Text(
+                    "${profile['username']}, ${profile['age']}",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  Text(
+                    profile['interests'] ?? "",
+                    style: const TextStyle(
+                      color: Colors.cyanAccent,
+                      fontSize: 16,
+                    ),
+                  ),
+
+                  const SizedBox(
+                    height: 10,
+                  ),
+
                   Row(
-                    children: [
-                      const Icon(Icons.interests,
-                          color: Color(0xFFFFB3CF), size: 15),
-                      const SizedBox(width: 5),
-                      Expanded(
-                        child: Text(
-                          profile['interests'],
-                          style: const TextStyle(
-                            color: Color(0xFFFFB3CF),
-                            fontSize: 14,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                    mainAxisAlignment:
+                    MainAxisAlignment.center,
+
+                    children: List.generate(
+                      allImages.length,
+                          (index) => Container(
+                        margin:
+                        const EdgeInsets.symmetric(
+                          horizontal: 3,
+                        ),
+
+                        width: 8,
+                        height: 8,
+
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+
+                          color: index == selectedImage
+                              ? Colors.cyanAccent
+                              : Colors.white38,
                         ),
                       ),
-                    ],
-                  ),
-                ],
-                if ((profile['bio'] ?? '').toString().isNotEmpty &&
-                    profile['bio'] !=
-                        "Hey! Let's be buddies.") ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    profile['bio'],
-                    style: TextStyle(
-                      color: kCard.withValues(alpha: 0.75),
-                      fontSize: 13,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                const SizedBox(height: 12),
-                // Dot indicators
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    allImages.length,
-                        (index) => Container(
-                      margin:
-                      const EdgeInsets.symmetric(horizontal: 3),
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: index == selectedImage
-                            ? kCard
-                            : kCard.withValues(alpha: 0.4),
-                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
     );
   }
 
