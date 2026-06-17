@@ -1,0 +1,290 @@
+[1mdiff --git a/buddyup/lib/screens/profile_screen.dart b/buddyup/lib/screens/profile_screen.dart[m
+[1mindex a94b686..af1e1fb 100644[m
+[1m--- a/buddyup/lib/screens/profile_screen.dart[m
+[1m+++ b/buddyup/lib/screens/profile_screen.dart[m
+[36m@@ -591,64 +591,6 @@[m [mclass _ProfileScreenState[m
+               height: 20,[m
+             ),[m
+ [m
+[31m-            SizedBox([m
+[31m-[m
+[31m-              width: double.infinity,[m
+[31m-              height: 55,[m
+[31m-[m
+[31m-              child: ElevatedButton([m
+[31m-[m
+[31m-                style:[m
+[31m-                ElevatedButton.styleFrom([m
+[31m-[m
+[31m-                  backgroundColor:[m
+[31m-                  Colors.redAccent,[m
+[31m-                ),[m
+[31m-[m
+[31m-                onPressed: () async {[m
+[31m-[m
+[31m-                  final prefs =[m
+[31m-                  await SharedPreferences.getInstance();[m
+[31m-[m
+[31m-                  await prefs.remove([m
+[31m-                    'isLoggedIn',[m
+[31m-                  );[m
+[31m-[m
+[31m-                  await prefs.remove([m
+[31m-                    'username',[m
+[31m-                  );[m
+[31m-[m
+[31m-                  await prefs.remove([m
+[31m-                    'userId',[m
+[31m-                  );[m
+[31m-[m
+[31m-                  if (!context.mounted) return;[m
+[31m-[m
+[31m-                  Navigator.pushAndRemoveUntil([m
+[31m-[m
+[31m-                    context,[m
+[31m-[m
+[31m-                    MaterialPageRoute([m
+[31m-[m
+[31m-                      builder: (context) =>[m
+[31m-                      const WelcomeScreen(),[m
+[31m-                    ),[m
+[31m-[m
+[31m-                        (route) => false,[m
+[31m-                  );[m
+[31m-                },[m
+[31m-[m
+[31m-                child: const Text([m
+[31m-[m
+[31m-                  "Logout",[m
+[31m-[m
+[31m-                  style: TextStyle([m
+[31m-                    color: Colors.white,[m
+[31m-                  ),[m
+[31m-                ),[m
+[31m-              ),[m
+[31m-            ),[m
+[31m-[m
+             const SizedBox([m
+               height: 40,[m
+             ),[m
+[36m@@ -827,6 +769,70 @@[m [mclass _ProfileScreenState[m
+                   );[m
+                 },[m
+               ),[m
+[32m+[m[32m              const SizedBox([m
+[32m+[m[32m                height: 30,[m
+[32m+[m[32m              ),[m
+[32m+[m
+[32m+[m[32m              SizedBox([m
+[32m+[m
+[32m+[m[32m                width: double.infinity,[m
+[32m+[m[32m                height: 55,[m
+[32m+[m
+[32m+[m[32m                child: ElevatedButton([m
+[32m+[m
+[32m+[m[32m                  style:[m
+[32m+[m[32m                  ElevatedButton.styleFrom([m
+[32m+[m
+[32m+[m[32m                    backgroundColor:[m
+[32m+[m[32m                    Colors.redAccent,[m
+[32m+[m[32m                  ),[m
+[32m+[m
+[32m+[m[32m                  onPressed: () async {[m
+[32m+[m
+[32m+[m[32m                    final prefs =[m
+[32m+[m[32m                    await SharedPreferences.getInstance();[m
+[32m+[m
+[32m+[m[32m                    await prefs.remove([m
+[32m+[m[32m                      'isLoggedIn',[m
+[32m+[m[32m                    );[m
+[32m+[m
+[32m+[m[32m                    await prefs.remove([m
+[32m+[m[32m                      'username',[m
+[32m+[m[32m                    );[m
+[32m+[m
+[32m+[m[32m                    await prefs.remove([m
+[32m+[m[32m                      'userId',[m
+[32m+[m[32m                    );[m
+[32m+[m
+[32m+[m[32m                    if (!context.mounted) return;[m
+[32m+[m
+[32m+[m[32m                    Navigator.pushAndRemoveUntil([m
+[32m+[m
+[32m+[m[32m                      context,[m
+[32m+[m
+[32m+[m[32m                      MaterialPageRoute([m
+[32m+[m
+[32m+[m[32m                        builder: (context) =>[m
+[32m+[m[32m                        const WelcomeScreen(),[m
+[32m+[m[32m                      ),[m
+[32m+[m
+[32m+[m[32m                          (route) => false,[m
+[32m+[m[32m                    );[m
+[32m+[m[32m                  },[m
+[32m+[m
+[32m+[m[32m                  child: const Text([m
+[32m+[m
+[32m+[m[32m                    "Logout",[m
+[32m+[m
+[32m+[m[32m                    style: TextStyle([m
+[32m+[m[32m                      color: Colors.white,[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m              ),[m
+[32m+[m[32m              const SizedBox([m
+[32m+[m[32m                height: 20,[m
+[32m+[m[32m              ),[m
+             ],[m
+           ),[m
+         ),[m
+[1mdiff --git a/profiles/urls.py b/profiles/urls.py[m
+[1mindex 113b996..d2b28a1 100644[m
+[1m--- a/profiles/urls.py[m
+[1m+++ b/profiles/urls.py[m
+[36m@@ -5,7 +5,8 @@[m [mfrom .views import ([m
+     profile_update_view,[m
+     upload_profile_picture_view,[m
+     upload_gallery_image_view,[m
+[31m-    gallery_images_view[m
+[32m+[m[32m    gallery_images_view,[m
+[32m+[m[32m    delete_gallery_image_view[m
+ )[m
+ [m
+ urlpatterns = [[m
+[36m@@ -39,4 +40,10 @@[m [murlpatterns = [[m
+     gallery_images_view,[m
+     name='gallery-images'[m
+     ),[m
+[32m+[m
+[32m+[m[32m    path([m
+[32m+[m[32m    'delete-gallery/<int:image_id>/',[m
+[32m+[m[32m    delete_gallery_image_view,[m
+[32m+[m[32m    name='delete-gallery-image'[m
+[32m+[m[32m),[m
+ ][m
+\ No newline at end of file[m
+[1mdiff --git a/profiles/views.py b/profiles/views.py[m
+[1mindex 32c0dbf..44b29c6 100644[m
+[1m--- a/profiles/views.py[m
+[1m+++ b/profiles/views.py[m
+[36m@@ -184,8 +184,18 @@[m [mdef upload_gallery_image_view(request, user_id):[m
+             status=status.HTTP_400_BAD_REQUEST[m
+         )[m
+ [m
+[31m-    ProfileImage.objects.create([m
+[32m+[m[32m    if ProfileImage.objects.filter([m
+[32m+[m[32m        profile=profile[m
+[32m+[m[32m    ).count() >= 6:[m
+[32m+[m
+[32m+[m[32m        return Response([m
+[32m+[m[32m            {[m
+[32m+[m[32m                'error': 'Maximum 6 images allowed'[m
+[32m+[m[32m            },[m
+[32m+[m[32m            status=status.HTTP_400_BAD_REQUEST[m
+[32m+[m[32m        )[m
+ [m
+[32m+[m[32m    ProfileImage.objects.create([m
+         profile=profile,[m
+         image=request.FILES['image'][m
+     )[m
+[36m@@ -196,7 +206,6 @@[m [mdef upload_gallery_image_view(request, user_id):[m
+         }[m
+     )[m
+ [m
+[31m-[m
+ @api_view(['GET'])[m
+ def gallery_images_view(request, user_id):[m
+ [m
+[36m@@ -232,4 +241,32 @@[m [mdef gallery_images_view(request, user_id):[m
+             ),[m
+         })[m
+ [m
+[31m-    return Response(data)[m
+\ No newline at end of file[m
+[32m+[m[32m    return Response(data)[m
+[32m+[m
+[32m+[m[32m@api_view(['DELETE'])[m
+[32m+[m[32mdef delete_gallery_image_view(request, image_id):[m
+[32m+[m
+[32m+[m[32m    try:[m
+[32m+[m
+[32m+[m[32m        image = ProfileImage.objects.get([m
+[32m+[m[32m            id=image_id[m
+[32m+[m[32m        )[m
+[32m+[m
+[32m+[m[32m    except ProfileImage.DoesNotExist:[m
+[32m+[m
+[32m+[m[32m        return Response([m
+[32m+[m[32m            {[m
+[32m+[m[32m                'error': 'Image not found'[m
+[32m+[m[32m            },[m
+[32m+[m[32m            status=status.HTTP_404_NOT_FOUND[m
+[32m+[m[32m        )[m
+[32m+[m
+[32m+[m[32m    image.image.delete()[m
+[32m+[m
+[32m+[m[32m    image.delete()[m
+[32m+[m
+[32m+[m[32m    return Response([m
+[32m+[m[32m        {[m
+[32m+[m[32m            'message': 'Image deleted successfully'[m
+[32m+[m[32m        }[m
+[32m+[m[32m    )[m
+\ No newline at end of file[m
+[1mdiff --git a/swipes/views.py b/swipes/views.py[m
+[1mindex 6c2583c..281864c 100644[m
+[1m--- a/swipes/views.py[m
+[1m+++ b/swipes/views.py[m
+[36m@@ -10,7 +10,10 @@[m [mimport json[m
+ import requests[m
+ import unicodedata[m
+ from django.views.decorators.csrf import csrf_exempt[m
+[31m-from profiles.models import Profile[m
+[32m+[m[32mfrom profiles.models import ([m
+[32m+[m[32m    Profile,[m
+[32m+[m[32m    ProfileImage[m
+[32m+[m[32m)[m
+ from rest_framework.decorators import api_view[m
+ from rest_framework.response import Response[m
+ from django.db.models import Q[m
+[36m@@ -126,16 +129,31 @@[m [mdef get_utilizatori_filtrati(request):[m
+                 # Rezolvam URL-ul pozei de profil[m
+                 foto_url = None[m
+                 if profil_p.profile_picture:[m
+[31m-                    foto_url = profil_p.profile_picture.url[m
+[32m+[m[32m                     foto_url = request.build_absolute_uri([m
+[32m+[m[32m                        profil_p.profile_picture.url[m
+[32m+[m[32m                    )[m
+[32m+[m[41m                [m
+[32m+[m[32m                gallery_images = [][m
+[32m+[m
+[32m+[m[32m                for img in ProfileImage.objects.filter([m
+[32m+[m[32m                    profile=profil_p[m
+[32m+[m[32m                )[:6]:[m
+[32m+[m
+[32m+[m[32m                    gallery_images.append([m
+[32m+[m[32m                        request.build_absolute_uri([m
+[32m+[m[32m                            img.image.url[m
+[32m+[m[32m                         )[m
+[32m+[m[32m                     )[m
+ [m
+                 rezultat_final.append({[m
+[31m-                    'id': p.id,[m
+[31m-                    'username': p.username,[m
+[31m-                    'age': profil_p.age or 20,[m
+[31m-                    'bio': profil_p.bio or "Hey! Let's be buddies.",[m
+[31m-                    'interests': profil_p.interests or "",[m
+[31m-                    'profile_picture': foto_url,[m
+[31m-                })[m
+[32m+[m[32m                'id': p.id,[m
+[32m+[m[32m                'username': p.username,[m
+[32m+[m[32m                'age': profil_p.age or 20,[m
+[32m+[m[32m                'bio': profil_p.bio or "Hey! Let's be buddies.",[m
+[32m+[m[32m                'interests': profil_p.interests or "",[m
+[32m+[m[32m                'profile_picture': foto_url,[m
+[32m+[m[32m                'gallery_images': gallery_images,[m
+[32m+[m[32m            })[m
+             except Exception as e:[m
+                 # Daca un profil are date corupte, trecem peste el fara sa blocam lista[m
+                 print(f"Eroare la procesarea profilului {p.id}: {e}")[m
