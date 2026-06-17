@@ -5,7 +5,8 @@ from .views import (
     profile_update_view,
     upload_profile_picture_view,
     upload_gallery_image_view,
-    gallery_images_view
+    gallery_images_view,
+    delete_gallery_image_view
 )
 
 urlpatterns = [
@@ -39,4 +40,10 @@ urlpatterns = [
     gallery_images_view,
     name='gallery-images'
     ),
+
+    path(
+    'delete-gallery/<int:image_id>/',
+    delete_gallery_image_view,
+    name='delete-gallery-image'
+),
 ]
