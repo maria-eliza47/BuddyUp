@@ -70,16 +70,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  bool _isPickerActive = false;
+
   Future<void> pickAndUploadGalleryImage() async {
+    if (_isPickerActive) return;
     if (galleryImages.length >= 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Maximum 6 images allowed')),
       );
       return;
     }
-    final picker = ImagePicker();
-    final XFile? image =
-    await picker.pickImage(source: ImageSource.gallery);
+    
+    _isPickerActive = true;
+    XFile? image;
+    try {
+      final picker = ImagePicker();
+      image = await picker.pickImage(source: ImageSource.gallery);
+    } catch (e) {
+      debugPrint('Image picker error: $e');
+    } finally {
+      _isPickerActive = false;
+    }
+    
     if (image == null) return;
     final request = http.MultipartRequest(
       'POST',
