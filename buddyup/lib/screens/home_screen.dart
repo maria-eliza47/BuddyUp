@@ -35,15 +35,13 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    //_updateLocationThenFetch();
-    fetchPotentialMatches();
+    _updateLocationThenFetch();
   }
 
   // ──────────────────────────────────────────
   // GPS — timeout de 5s ca sa nu blocheze loading-ul
   // ──────────────────────────────────────────
 
-  // ignore: unused_element
   Future<void> _updateLocationThenFetch() async {
     await _requestPermission();
     await _fetchAndSendLocation().timeout(
