@@ -112,7 +112,12 @@ def get_utilizatori_filtrati(request):
         potentiali = User.objects.all().select_related('profile')
 
         if current_user:
-            potentiali = potentiali.exclude(id=current_user.id)
+            from reports.models import Block
+            blocked_by_me = Block.objects.filter(blocker=current_user).values_list('blocked_user_id', flat=True)
+            blocked_me = Block.objects.filter(blocked_user=current_user).values_list('blocker_id', flat=True)
+            exclude_ids = set(list(blocked_by_me) + list(blocked_me) + [current_user.id])
+            
+            potentiali = potentiali.exclude(id__in=exclude_ids)
 
         rezultat_final = []
         for p in potentiali:
@@ -213,32 +218,47 @@ def get_ai_top_picks(request):
         my_interests = my_profile.interests if my_profile.interests else ""
         my_bio = my_profile.bio if my_profile.bio else ""
 
-        other_profiles = Profile.objects.exclude(user_id=user_id)
+        from reports.models import Block
+        blocked_by_me = Block.objects.filter(blocker_id=user_id).values_list('blocked_user_id', flat=True)
+        blocked_me = Block.objects.filter(blocked_user_id=user_id).values_list('blocker_id', flat=True)
+        exclude_ids = set(list(blocked_by_me) + list(blocked_me) + [int(user_id)])
+
+        other_profiles = Profile.objects.exclude(user_id__in=exclude_ids)
 
         if not other_profiles.exists():
             return JsonResponse([], safe=False)
 
+        import re
         best_match = None
+        max_common = -1
+        my_words = set(re.findall(r'\w+', my_interests.lower())) if my_interests else set()
+
         for p in other_profiles:
-            if p.interests and my_interests:
-                common = set(my_interests.lower().split(',')) & set(p.interests.lower().split(','))
-                if common:
-                    best_match = p
-                    break
+            p_interests = p.interests if p.interests else ""
+            p_words = set(re.findall(r'\w+', p_interests.lower()))
+            common_count = len(my_words & p_words)
+            
+            if common_count > max_common:
+                max_common = common_count
+                best_match = p
 
         if not best_match:
             best_match = random.choice(other_profiles)
 
         interese_afisate = best_match.interests if best_match.interests else "Diverse pasiuni"
+        my_username = my_profile.user.username
 
-        # Prompt special pentru Llama 3 - generare de recomandări calitative
         prompt = (
-            f"Ești expertul în matchmaking AI al aplicației BuddyUp- folosita pentru a lega prietenii."
-            f"Analizează aceste două profiluri și generează o justificare scurtă și convingătoare în limba română (maxim 2 propoziții) "
-            f"despre de ce acești doi utilizatori sunt o potrivire excelentă.\n"
-            f"Utilizatorul 1: Interese: {my_interests}, Bio: {my_bio}\n"
-            f"Utilizatorul 2: Username: {best_match.user.username}, Interese: {best_match.interests}, Bio: {best_match.bio}\n"
-            f"Începe textul direct cu un emoji steluță (✨) și nu folosi introduceri plictisitoare. Justificarea trebuie să fie adresată direct primului utilizator."
+            f"Scrie un scurt mesaj (maxim 2 propoziții) în limba română, adresat direct utilizatorului {my_username}.\n"
+            f"Explică-i de ce ar fi prieten bun cu {best_match.user.username}.\n"
+            f"- Interese {my_username}: {my_interests}\n"
+            f"- Interese {best_match.user.username}: {best_match.interests}\n"
+            f"REGULI STRICTE:\n"
+            f"1. NU inventa alte pasiuni, hobby-uri sau povești. Menționează STRICT doar interesele din listele de mai sus.\n"
+            f"2. NU folosi alte nume. Există doar {my_username} și {best_match.user.username}.\n"
+            f"3. Începe mesajul cu emoji-ul ✨.\n"
+            f"4. Folosește o limbă română simplă, curată, fără metafore sau formulări ciudate.\n"
+            f"Exemplu bun: ✨ Salut {my_username}! Tu și {best_match.user.username} ați face o echipă grozavă pentru că amândoi sunteți pasionați de [interes comun]."
         )
 
         # --- Conexiunea cu OLLAMA LOCAL ---
@@ -256,7 +276,7 @@ def get_ai_top_picks(request):
                 result = response.json()
                 ai_reason = result.get('response', '').strip()
             else:
-                ai_reason = f"✨ Recomandare specială! Analiza AI indică compatibilitate ridicată pe baza interesului pentru: {interese_afisate}."
+                ai_reason = f"✨ Recomandare specială! Analiza AI indică compatibilitate ridicată pe baza intereselor: {interese_afisate}."
         except Exception as e:
             print(f"❌ Eroare AI Local (Matchmaker): {e}")
             ai_reason = f"✨ Recomandare specială! Potrivire ridicată pe baza profilurilor voastre din baza de date."
@@ -272,4 +292,4 @@ def get_ai_top_picks(request):
         return JsonResponse(recommendation, safe=False)
 
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': str(e)}, status=500)
