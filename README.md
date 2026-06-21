@@ -220,7 +220,7 @@ BuddyUp integrează un subsistem hibrid de inteligență artificială, rulat 100
 Sistemul utilizează motorul **Ollama** care rulează ca daemon local pe portul `11434`, expunând un API REST nativ pentru manipularea modelului lingvistic **Llama 3 (8B Instruct)**. Acest model a fost ales pentru capacitatea sa avansată de *Instruction Tuning* și generare de text contextual.
 
 #### B. AI Picks (Recomandări de Compatibilitate)
-![AI Top Pick](screenshots/ai_picks.png)
+![AI Top Pick](screenshots/ai_icebreaker.png)
 Disponibil din ecranul principal. Algoritmul filtrează baza de date pentru compatibilități, apoi folosește Llama 3 pentru a genera o justificare semantică scurtă și convingătoare de ce doi utilizatori ar trebui să se conecteze.
 
 **Fluxul de Date (Pipeline):**
