@@ -11,7 +11,10 @@ import requests
 import unicodedata
 import random
 from django.views.decorators.csrf import csrf_exempt
-from profiles.models import Profile
+from profiles.models import (
+    Profile,
+    ProfileImage
+)
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.db.models import Q
@@ -127,9 +130,15 @@ def get_utilizatori_filtrati(request):
 
                 profil_p = p.profile
 
+                # Rezolvam URL-ul pozei de profil
                 foto_url = None
                 if profil_p.profile_picture:
-                    foto_url = profil_p.profile_picture.url
+                     foto_url = request.build_absolute_uri(profil_p.profile_picture.url)
+
+                # Galeria de poze
+                gallery_images = []
+                for img in ProfileImage.objects.filter(profile=profil_p)[:6]:
+                    gallery_images.append(request.build_absolute_uri(img.image.url))
 
                 # Calculam distanta cu geopy daca ambii au coordonate
                 distance_km = None
@@ -151,6 +160,7 @@ def get_utilizatori_filtrati(request):
                     'bio': profil_p.bio or "Hey! Let's be buddies.",
                     'interests': profil_p.interests or "",
                     'profile_picture': foto_url,
+                    'gallery_images': gallery_images,
                     'distance_km': distance_km,
                 })
             except Exception as e:
@@ -292,4 +302,4 @@ def get_ai_top_picks(request):
         return JsonResponse(recommendation, safe=False)
 
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': str(e)}, status=500)
