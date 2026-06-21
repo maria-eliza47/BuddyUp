@@ -137,19 +137,21 @@ class _MatchesScreenState extends State<MatchesScreen> {
                   color: kDeep.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child:
-                const Icon(Icons.chat, color: kDeep, size: 20),
+                child: const Icon(Icons.chat, color: kDeep, size: 20),
               ),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ChatScreen(
-                    userId: widget.userId,
-                    otherUserName: m['username'] ?? 'Utilizator',
-                    threadId: m['thread_id'] ?? 1,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatScreen(
+                      userId: widget.userId,
+                      otherUserName: m['username'] ?? "Utilizator",
+                      threadId: m['thread_id'] ?? 1,
+                      otherUserId: m['user_id'],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           );
         },

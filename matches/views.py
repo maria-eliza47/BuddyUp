@@ -22,9 +22,18 @@ def lista_matchuri_utilizator(request):
 
     matches = Match.objects.filter(Q(user1=user) | Q(user2=user))
 
+    # --- FILTRU BLOCK ---
+    from reports.models import Block
+    blocked_by_me = Block.objects.filter(blocker=user).values_list('blocked_user_id', flat=True)
+    blocked_me = Block.objects.filter(blocked_user=user).values_list('blocker_id', flat=True)
+    exclude_ids = set(list(blocked_by_me) + list(blocked_me))
+
     data = []
     for m in matches:
         partner = m.user2 if m.user1 == user else m.user1
+
+        if partner.id in exclude_ids:
+            continue
 
         try:
             profil_p = partner.profile

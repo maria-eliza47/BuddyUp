@@ -17,6 +17,16 @@ def get_or_create_thread(request):
             user1 = User.objects.get(id=user1_id)
             user2 = User.objects.get(id=user2_id)
 
+            from reports.models import Block
+            from django.db.models import Q
+            is_blocked = Block.objects.filter(
+                Q(blocker=user1, blocked_user=user2) |
+                Q(blocker=user2, blocked_user=user1)
+            ).exists()
+
+            if is_blocked:
+                return JsonResponse({"error": "Nu puteți iniția o conversație deoarece există un block."}, status=403)
+
             # Verificăm dacă există deja o discuție între ei (indiferent cine a început-o)
             thread = Thread.objects.filter(user1=user1, user2=user2).first()
             if not thread:
@@ -44,6 +54,18 @@ def send_message(request):
 
             thread = Thread.objects.get(id=thread_id)
             sender = User.objects.get(id=sender_id)
+            
+            receiver = thread.user1 if thread.user1 != sender else thread.user2
+            
+            from reports.models import Block
+            from django.db.models import Q
+            is_blocked = Block.objects.filter(
+                Q(blocker=sender, blocked_user=receiver) |
+                Q(blocker=receiver, blocked_user=sender)
+            ).exists()
+
+            if is_blocked:
+                return JsonResponse({"error": "Nu poți trimite mesaje acestui utilizator."}, status=403)
 
             # Salvăm mesajul în baza de date
             msg = Message.objects.create(thread=thread, sender=sender, text=text)

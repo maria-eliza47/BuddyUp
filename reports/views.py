@@ -19,6 +19,14 @@ def block_user(request):
             # get_or_create ne asigură că dacă i-a dat deja block, nu va crea o dublură
             Block.objects.get_or_create(blocker=blocker, blocked_user=blocked_user)
             
+            # Ștergem orice match existent
+            from matches.models import Match
+            from django.db.models import Q
+            Match.objects.filter(
+                Q(user1=blocker, user2=blocked_user) |
+                Q(user1=blocked_user, user2=blocker)
+            ).delete()
+
             return JsonResponse({"success": True, "message": f"{blocker.username} l-a blocat pe {blocked_user.username}."})
         except User.DoesNotExist:
             return JsonResponse({"error": "Utilizatorul nu a fost găsit."}, status=404)

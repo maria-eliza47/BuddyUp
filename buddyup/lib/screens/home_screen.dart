@@ -35,8 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    //_updateLocationThenFetch();
-    fetchPotentialMatches();
+    _updateLocationThenFetch();
   }
 
   // ──────────────────────────────────────────
@@ -437,11 +436,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     if (allImages.isEmpty) allImages.add('');
 
-    final int profileId = profile['id'];
     final selectedImage = currentImageIndex[cardIndex] ?? 0;
-    final double? distanceKm = profile['distance_km'] != null
-        ? (profile['distance_km'] as num).toDouble()
-        : null;
 
     return Container(
         decoration: BoxDecoration(
@@ -493,11 +488,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     fit: BoxFit.cover,
                   )
 
-                      : const Icon(
-                    Icons.person,
-                    size: 100,
-                    color: Colors.white24,
-                  ),
+                      : _buildPlaceholder(),
                 ),
               ),
             ),

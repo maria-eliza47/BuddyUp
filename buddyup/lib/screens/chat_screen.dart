@@ -12,12 +12,14 @@ class ChatScreen extends StatefulWidget {
   final int userId;
   final String otherUserName;
   final int threadId;
+  final int otherUserId;
 
   const ChatScreen({
     super.key,
     required this.userId,
     required this.otherUserName,
     required this.threadId,
+    required this.otherUserId,
   });
 
   @override
@@ -26,9 +28,83 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
+  final TextEditingController _reportController = TextEditingController();
   List<dynamic> messages = [];
   bool isLoading = true;
   String? myName;
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _reportController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _blockUser() async {
+    final url = Uri.parse('http://10.0.2.2:8000/reports/api/block/');
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'blocker_id': widget.userId,
+        'blocked_id': widget.otherUserId,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Utilizator blocat cu succes!'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Eroare la blocare: ${response.statusCode}'),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _reportUser(String reason) async {
+    final url = Uri.parse('http://10.0.2.2:8000/reports/api/report/');
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'reason': reason,
+        'reporter_id': widget.userId,
+        'reported_id': widget.otherUserId,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Raport trimis cu succes!'),
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Eroare la raportare: ${response.statusCode}'),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -155,6 +231,89 @@ class _ChatScreenState extends State<ChatScreen> {
             icon: const Icon(Icons.auto_awesome, color: Colors.amberAccent),
             tooltip: 'AI Icebreaker',
             onPressed: generateIcebreaker,
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(
+              Icons.more_vert,
+              color: kCard,
+            ),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'block',
+                child: Text(
+                  'Block User',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'report',
+                child: Text(
+                  'Report User',
+                  style: TextStyle(color: Colors.orange),
+                ),
+              ),
+            ],
+            onSelected: (value) async {
+              if (value == 'block') {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Block User'),
+                    content: const Text(
+                      'Ești sigur că vrei să blochezi acest utilizator? Nu veți mai putea comunica.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Anulează'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text(
+                          'Block',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirmed == true) {
+                  await _blockUser();
+                }
+              } else if (value == 'report') {
+                _reportController.clear();
+
+                await showDialog<void>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Report User'),
+                    content: TextField(
+                      controller: _reportController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        hintText: 'Introduce motivul raportării',
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Anulează'),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          await _reportUser(_reportController.text.trim());
+                        },
+                        child: const Text(
+                          'Report',
+                          style: TextStyle(color: Colors.orange),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
           ),
         ],
       ),
