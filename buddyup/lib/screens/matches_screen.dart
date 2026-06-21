@@ -131,10 +131,14 @@ class _MatchesScreenState extends State<MatchesScreen> {
                 style: TextStyle(
                     color: kDark.withValues(alpha: 0.5)),
               ),
-<<<<<<< HEAD
-              trailing: const Icon(Icons.chat, color: Colors.cyanAccent),
-              
-              // AICI e actiunea corecta cand apesi pe cineva
+              trailing: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: kDeep.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.chat, color: kDeep, size: 20),
+              ),
               onTap: () {
                 Navigator.push(
                   context,
@@ -145,27 +149,9 @@ class _MatchesScreenState extends State<MatchesScreen> {
                       threadId: m['thread_id'] ?? 1,
                       otherUserId: m['user_id'],
                     ),
-=======
-              trailing: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: kDeep.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child:
-                const Icon(Icons.chat, color: kDeep, size: 20),
-              ),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ChatScreen(
-                    userId: widget.userId,
-                    otherUserName: m['username'] ?? 'Utilizator',
-                    threadId: m['thread_id'] ?? 1,
->>>>>>> acb159eeba5ccd68ebcf7d1518bad612921615dc
                   ),
-                ),
-              ),
+                );
+              },
             ),
           );
         },
