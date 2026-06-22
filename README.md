@@ -47,11 +47,11 @@ Interfața urmează principiile *Material Design 3*, cu o temă personalizată m
 
 | Profil | Editare Profil | Chat |
 | :---: | :---: | :---: |
-| ![Profile](screenshots/profile.jpg) | ![Edit](screenshots/edit_profile.jpg) | ![Chat](screenshots/ai_icebreaker_message.jpg) |
+| ![Profile](screenshots/profile.jpg) | ![Edit](screenshots/edit_profile.jpg) | ![Chat](screenshots/ai_icebreaker_message.png) |
 | *Biografie, interese, galerie foto și opțiuni de securitate.* | *Actualizare date personale și media.* | *Mesagerie în timp real cu sugestii AI Icebreaker.* |
 | AI-top picks |  AI-Chat |
 | :---: |  :---: |
-| ![ai](screenshots/recomandare.jpg) | ![ai](screenshots/ai_icebreaker.jpg) | 
+| ![ai](screenshots/recomandare.png) | ![ai](screenshots/ai_icebreaker.png) | 
 | *top-picks by ai* | *ai ul iti da sugestii de icebreakers* | 
 
 ---
