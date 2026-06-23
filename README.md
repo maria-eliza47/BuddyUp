@@ -192,7 +192,7 @@ Pentru a testa corect funcționalitatea de matching bazată pe distanță pe un 
 * În Android Studio, deschideți panoul **Extended Controls** al emulatorului (cele trei puncte `...` din meniul lateral al telefonului virtual).
 * Navigați la secțiunea **Location**.
 * Introduceți manual coordonate geografice valide (ex: Latitudinea și Longitudinea pentru București) și apăsați butonul **Send / Set Location**.
-* Acest procedeu injectează coordonatele direct în senzorul virtual al emulatorului, p
+* Acest procedeu injectează coordonatele direct în senzorul virtual al emulatorului, permițând codului Flutter să le preia instantaneu, fără să mai aștepte conexiuni prin satelit.
 
 ### 4. Algoritmul de Social Matching (Swipe & Match)
 
