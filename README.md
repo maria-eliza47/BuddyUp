@@ -52,7 +52,7 @@ Interfața urmează principiile *Material Design 3*, cu o temă personalizată m
 | AI-top picks |  AI-Chat | Location permission request |
 | :---: |  :---: | :---: |
 | ![ai](screenshots/ai_top_picks.png) | ![ai](screenshots/ai_line.png) | ![locatie](screenshots/notificare_locatie.jpeg) |
-| *top-picks by ai* | *ai ul ofera sugestii de icebreakers* | 
+| *top-picks by ai* | *ai ul ofera sugestii de icebreakers* | *cerere permisiune locatie la prima deschidere a aplicatiei* |
 
 ---
 
