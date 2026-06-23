@@ -45,14 +45,14 @@ Interfața urmează principiile *Material Design 3*, cu o temă personalizată m
 | ![Register](screenshots/register.jpg) | ![Login](screenshots/login.jpg) | ![Home](screenshots/home.jpg) |
 | *Creare cont cu validare în timp real.* | *Ecran securizat de login cu persistență sesiune.* | *Carduri swipable cu galerie de imagini și distanță GPS.* |
 
-| Profil | Editare Profil | Chat |
+| Profil | Editare Profil | Block |
 | :---: | :---: | :---: |
-| ![Profile](screenshots/profile.jpg) | ![Edit](screenshots/edit_profile.jpg) | ![Chat](screenshots/ai_icebreaker_message.png) |
-| *Biografie, interese, galerie foto și opțiuni de securitate.* | *Actualizare date personale și media.* | *Mesagerie în timp real cu sugestii AI Icebreaker.* |
+| ![Profile](screenshots/profile.jpg) | ![Edit](screenshots/edit_profile.jpg) | ![Chat](screenshots/block_user.png) |
+| *Biografie, interese, galerie foto și opțiuni de securitate.* | *Actualizare date personale și media.* | *Poti bloca userii cu care nu vrei sa interactionezi* |
 | AI-top picks |  AI-Chat | 
 | :---: |  :---: |
 | ![ai](screenshots/ai_top_picks.png) | ![ai](screenshots/ai_line.png) | 
-| *top-picks by ai* | *ai ul iti da sugestii de icebreakers* | 
+| *top-picks by ai* | *ai ul ofera sugestii de icebreakers* | 
 
 ---
 
