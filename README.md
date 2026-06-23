@@ -93,7 +93,7 @@ Fiecare utilizator deține un profil personalizabil ce include: biografie, vârs
 
 ---
 
-### 3. Sistemul de Localizare GPS & Proximitate
+### 3.1. Deep Dive: Permisiunile de Locație și Integrarea OS
 
 Funcționalitate cheie a BuddyUp — aduce utilizatorii online în lumea reală prin afișarea distanței față de fiecare potențial match.
 Sistemul de locație din BuddyUp interacționează direct cu sistemul de operare al dispozitivului mobil (Android/iOS) pentru a asigura o experiență sigură și transparentă.
