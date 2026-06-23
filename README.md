@@ -49,6 +49,7 @@ Interfața urmează principiile *Material Design 3*, cu o temă personalizată m
 | :---: | :---: | :---: |
 | ![Profile](screenshots/profile.jpg) | ![Edit](screenshots/edit_profile.jpg) | ![Chat](screenshots/block_user.png) |
 | *Biografie, interese, galerie foto și opțiuni de securitate.* | *Actualizare date personale și media.* | *Poti bloca userii cu care nu vrei sa interactionezi* |
+
 | AI-top picks |  AI-Chat | Location permission request |
 | :---: | :---: | :---: |
 | ![ai](screenshots/ai_top_picks.png) | ![ai](screenshots/ai_line.png) | ![locatie](screenshots/notificare_locatie.jpeg) |
