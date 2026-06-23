@@ -38,7 +38,7 @@ Proiectul adoptă o arhitectură modernă **client-server**:
 
 ## Prezentare Vizuală (Screenshots)
 
-Interfața urmează principiile *Material Design 3*, cu o temă personalizată mai girly -fundal roz, accente roz-piersică și carduri albe.
+Interfața urmează principiile *Material Design 3*, cu o temă personalizată mai girly - fundal roz, accente roz-piersică și carduri albe.
 
 | Înregistrare | Autentificare | Ecran Principal (Swipe) |
 | :---: | :---: | :---: |
@@ -156,7 +156,7 @@ Tipuri de Permisiuni (Precise vs. Approximate)
 * **Locație Precisă (Precise Location - `ACCESS_FINE_LOCATION`):** Folosește senzorul GPS hardware al telefonului. Oferă o acuratețe de câțiva metri. Aceasta este permisiunea ideală pentru BuddyUp, permițând algoritmului nostru să calculeze distanța corectă afișată pe cardurile de swipe.
 * **Locație Aproximativă (Approximate Location - `ACCESS_COARSE_LOCATION`):** Folosește triangularea rețelelor Wi-Fi și a turnurilor celulare. Oferă o acuratețe la nivel de cartier sau oraș (raza de 1-5 km). Dacă utilizatorul alege această opțiune din motive de intimitate, aplicația continuă să funcționeze, dar distanțele afișate vor fi estimative.
 
-#### B. Fluxul de Consimțământ (Consent Flow)
+#### D. Fluxul de Consimțământ (Consent Flow)
 
 La prima accesare a ecranului principal (Home), aplicația declanșează un dialog al sistemului de operare. 
 1. Pachetul `geolocator` verifică starea curentă a permisiunii.
