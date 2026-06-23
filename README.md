@@ -92,7 +92,7 @@ Fiecare utilizator deține un profil personalizabil ce include: biografie, vârs
 > **Notă tehnică — conversie IP emulator:** Backend-ul returnează URL-uri de media care conțin `127.0.0.1`. Flutter înlocuiește dinamic acest IP cu `10.0.2.2` (gateway-ul mașinii gazdă pentru emulatorului Android), permițând încărcarea corectă a imaginilor în timpul dezvoltării.
 
 ---
-### 3 Sistemul de localizare GPS
+### 3 GPS & Proximitate
 ### 3.1. Deep Dive: Permisiunile de Locație și Integrarea OS
 
 Funcționalitate cheie a BuddyUp — aduce utilizatorii online în lumea reală prin afișarea distanței față de fiecare potențial match.
