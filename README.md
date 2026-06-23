@@ -13,17 +13,16 @@ Proiectul adoptă o arhitectură modernă client-server, utilizând **Flutter** 
 3. [Funcționalități](#funcționalități-detaliate--logica-de-business)
    - [Autentificare & Securitate](#1-autentificare--securitate)
    - [Profil, Media & Galerie](#2-profil-media--galerie)
-   - [GPS & Proximitate](#3-sistemul-de-localizare-gps--proximitate)
+   - [GPS & Proximitate](#3-gps--proximitate)
    - [Swipe & Match](#4-algoritmul-de-social-matching-swipe--match)
    - [Chat & Mesagerie](#5-chat--mesagerie)
-   - [Funcționalități AI](#6-funcționalități-ai)
-   - [Siguranță: Block & Report](#7-siguranță-block--report)
+   - [Funcționalități AI](#6-funcționalități-ai-ai-matchmaking-engine--icebreaker)
+   - [Siguranță: Block & Report](#7-siguranță-și-moderare-block--report)
 4. [Arhitectură & Stack tehnic](#arhitectură-tehnică--stack)
 5. [Structura proiectului](#structura-proiectului)
 6. [Referință API](#referință-api)
-7. [Ghid de instalare & testare locală](#-ghid-de-instalare--testare-locală)
+7. [Ghid de instalare & testare locală](#%EF%B8%8F-ghid-de-instalare--testare-locală)
 8. [Echipa](#-echipa-de-dezvoltare)
-
 ---
 
 ## Prezentare generală
