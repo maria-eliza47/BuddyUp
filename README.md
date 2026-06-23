@@ -95,6 +95,7 @@ Fiecare utilizator deține un profil personalizabil ce include: biografie, vârs
 ### 3. Sistemul de Localizare GPS & Proximitate
 
 Funcționalitate cheie a BuddyUp — aduce utilizatorii online în lumea reală prin afișarea distanței față de fiecare potențial match.
+Sistemul de locație din BuddyUp interacționează direct cu sistemul de operare al dispozitivului mobil (Android/iOS) pentru a asigura o experiență sigură și transparentă.
 
 #### A. Fluxul tehnic complet
 
@@ -150,6 +151,19 @@ distance_km = round(
 Dacă oricare dintre utilizatori nu are locația salvată, câmpul `distance_km` returnează `null` și badge-ul nu este afișat pe card.
 
 #### C. Permisiuni necesare
+Tipuri de Permisiuni (Precise vs. Approximate)
+Începând cu versiunile recente de Android (12+) și iOS, utilizatorii au control granular asupra modului în care partajează locația. BuddyUp este optimizat pentru a gestiona aceste scenarii:
+* **Locație Precisă (Precise Location - `ACCESS_FINE_LOCATION`):** Folosește senzorul GPS hardware al telefonului. Oferă o acuratețe de câțiva metri. Aceasta este permisiunea ideală pentru BuddyUp, permițând algoritmului nostru să calculeze distanța corectă afișată pe cardurile de swipe.
+* **Locație Aproximativă (Approximate Location - `ACCESS_COARSE_LOCATION`):** Folosește triangularea rețelelor Wi-Fi și a turnurilor celulare. Oferă o acuratețe la nivel de cartier sau oraș (raza de 1-5 km). Dacă utilizatorul alege această opțiune din motive de intimitate, aplicația continuă să funcționeze, dar distanțele afișate vor fi estimative.
+
+#### B. Fluxul de Consimțământ (Consent Flow)
+
+La prima accesare a ecranului principal (Home), aplicația declanșează un dialog al sistemului de operare. 
+1. Pachetul `geolocator` verifică starea curentă a permisiunii.
+2. Dacă este `denied`, solicită explicit permisiunea `LocationPermission.whileInUse` (aplicația preia date GPS **doar** când este deschisă pe ecran, economisind bateria și protejând intimitatea).
+3. Dacă permisiunea este refuzată permanent (`deniedForever`), utilizatorul este direcționat automat către setările telefonului.
+
+---
 
 **Android** (`AndroidManifest.xml`):
 ```xml
@@ -164,6 +178,21 @@ Dacă oricare dintre utilizatori nu are locația salvată, câmpul `distance_km`
 ```
 
 ---
+### 3.2. De ce funcționează greu GPS-ul pe Emulator?
+
+În timpul dezvoltării și testării locale, apelarea funcțiilor GPS (cum ar fi `getCurrentPosition()`) pe un emulator Android sau iOS Simulator poate duce frecvent la blocaje, *loading infinit* sau erori de tip `TimeoutException`.
+
+**Cauzele tehnice ale acestui comportament:**
+1. **Lipsa Hardware-ului:** Emulatoarele rulează pe laptopuri/PC-uri care, de cele mai multe ori, nu au un chip GPS hardware.
+2. **Așteptarea Semnalului Inexistent:** Când aplicația Flutter cere locația precisă, sistemul de operare virtual (Android-ul de pe emulator) încearcă să contacteze sateliții GPS. Neavând hardware, procesul rămâne "agățat" într-o buclă de așteptare până la expirarea timpului limită (care poate dura zeci de secunde).
+3. **Rețeaua Virtuală Izolată:** Emulatoarele folosesc o rețea virtuală (bridge) care nu are acces direct la routerele Wi-Fi din jurul tău pentru a face triangulare (Locație Aproximativă).
+
+**Soluția pentru Testare (Mock Location):**
+Pentru a testa corect funcționalitatea de matching bazată pe distanță pe un emulator, locația trebuie **simulată** forțat din exteriorul aplicației:
+* În Android Studio, deschideți panoul **Extended Controls** al emulatorului (cele trei puncte `...` din meniul lateral al telefonului virtual).
+* Navigați la secțiunea **Location**.
+* Introduceți manual coordonate geografice valide (ex: Latitudinea și Longitudinea pentru București) și apăsați butonul **Send / Set Location**.
+* Acest procedeu injectează coordonatele direct în senzorul virtual al emulatorului, p
 
 ### 4. Algoritmul de Social Matching (Swipe & Match)
 
