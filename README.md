@@ -49,9 +49,9 @@ Interfața urmează principiile *Material Design 3*, cu o temă personalizată m
 | :---: | :---: | :---: |
 | ![Profile](screenshots/profile.jpg) | ![Edit](screenshots/edit_profile.jpg) | ![Chat](screenshots/ai_icebreaker_message.png) |
 | *Biografie, interese, galerie foto și opțiuni de securitate.* | *Actualizare date personale și media.* | *Mesagerie în timp real cu sugestii AI Icebreaker.* |
-| AI-top picks |  AI-Chat |
+| AI-top picks |  AI-Chat | 
 | :---: |  :---: |
-| ![ai](screenshots/recomandare.png) | ![ai](screenshots/ai_icebreaker.png) | 
+| ![ai](screenshots/ai_top_picks.png) | ![ai](screenshots/ai_line.png) | 
 | *top-picks by ai* | *ai ul iti da sugestii de icebreakers* | 
 
 ---
@@ -224,7 +224,7 @@ BuddyUp integrează un subsistem hibrid de inteligență artificială, rulat 100
 Sistemul utilizează motorul **Ollama** care rulează ca daemon local pe portul `11434`, expunând un API REST nativ pentru manipularea modelului lingvistic **Llama 3 (8B Instruct)**. Acest model a fost ales pentru capacitatea sa avansată de *Instruction Tuning* și generare de text contextual.
 
 #### B. AI Picks (Recomandări de Compatibilitate)
-![AI Top Pick](screenshots/ai_icebreaker.png)
+
 Disponibil din ecranul principal. Algoritmul filtrează baza de date pentru compatibilități, apoi folosește Llama 3 pentru a genera o justificare semantică scurtă și convingătoare de ce doi utilizatori ar trebui să se conecteze.
 
 **Fluxul de Date (Pipeline):**
